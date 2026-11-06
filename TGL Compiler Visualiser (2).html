@@ -1,0 +1,1819 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>TGL Compiler Visualiser</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+
+:root {
+  --bg: #eef2f0;
+  --panel: #ffffff;
+  --sunk: #f5f8f6;
+  --line: #d6dfdb;
+  --fg: #16201c;
+  --muted: #5a6964;
+  --accent: #0b7a62;
+  --accent-soft: #dcf1ea;
+  --on-accent: #ffffff;
+  --paper: #fcfdfc;
+  --paper-grid: #e6ece9;
+  --paper-edge: #b9c6c1;
+  --ok: #2b7a37;
+  --ok-soft: #e1f2e3;
+  --warn: #9a6408;
+  --warn-soft: #fbefd6;
+  --err: #b4322a;
+  --err-soft: #fbe3e0;
+  --skip: #8a9893;
+  --syn-kw: #0b7a62;
+  --syn-num: #8a3fb0;
+  --syn-col: #b05a12;
+  --syn-com: #7d8b86;
+  --syn-punc: #6d7a75;
+  --font-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1513; --panel: #171f1c; --sunk: #121916; --line: #2a3531; --fg: #e3ebe7; --muted: #94a59f;
+    --accent: #3fc7a3; --accent-soft: #173a31; --on-accent: #06231b;
+    --paper: #fcfdfc; --paper-grid: #e6ece9; --paper-edge: #b9c6c1;
+    --ok: #6cc77a; --ok-soft: #1b3320; --warn: #e8b04b; --warn-soft: #3a2d12; --err: #f0776c; --err-soft: #3d1c19; --skip: #6d7c77;
+    --syn-kw: #4fd1ad; --syn-num: #c99be3; --syn-col: #f0a35c; --syn-com: #74847e; --syn-punc: #8c9c96;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1513; --panel: #171f1c; --sunk: #121916; --line: #2a3531; --fg: #e3ebe7; --muted: #94a59f;
+  --accent: #3fc7a3; --accent-soft: #173a31; --on-accent: #06231b;
+  --paper: #fcfdfc; --paper-grid: #e6ece9; --paper-edge: #b9c6c1;
+  --ok: #6cc77a; --ok-soft: #1b3320; --warn: #e8b04b; --warn-soft: #3a2d12; --err: #f0776c; --err-soft: #3d1c19; --skip: #6d7c77;
+  --syn-kw: #4fd1ad; --syn-num: #c99be3; --syn-col: #f0a35c; --syn-com: #74847e; --syn-punc: #8c9c96;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 40px;
+}
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- header ---------- */
+.topbar { max-width: 1400px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding-block: 18px 14px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand svg { flex: none; }
+.brand h1 { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+.brand p { margin: 0; color: var(--muted); font-size: 13px; }
+.views { margin-left: auto; display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.views a { text-decoration: none; color: var(--muted); padding: 6px 14px; border-radius: 999px; font-weight: 500; font-size: 13px; }
+.views a[aria-current="page"] { background: var(--accent); color: var(--on-accent); }
+
+main { max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+/* ---------- workbench ---------- */
+.bench { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 16px; }
+@media (max-width: 1000px) { .bench { grid-template-columns: minmax(0, 1fr); } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.panel-head h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0; font-weight: 600; }
+.spacer { flex: 1; }
+.btn { border: 1px solid var(--line); background: var(--sunk); border-radius: 7px; padding: 5px 11px; font-size: 13px; font-weight: 500; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn.icon { padding: 5px 8px; min-width: 32px; line-height: 1; }
+select.btn { padding-right: 6px; }
+.left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+/* editor with highlighted underlay */
+.editor { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); height: 360px; font-family: var(--font-mono); font-size: 13px; line-height: 21px; }
+.gutter { background: var(--sunk); color: var(--muted); text-align: right; padding: 10px 8px 10px 12px; overflow: hidden; user-select: none; border-right: 1px solid var(--line); border-bottom-left-radius: var(--radius); }
+.gutter div { height: 21px; font-variant-numeric: tabular-nums; }
+.gutter div.bad { color: var(--err); font-weight: 600; }
+.code-wrap { position: relative; overflow: hidden; min-width: 0; }
+.code-hl, .code-ta { position: absolute; inset: 0; margin: 0; padding: 10px 12px; font: inherit; line-height: 21px; white-space: pre; tab-size: 2; letter-spacing: 0; }
+.code-hl { pointer-events: none; overflow: hidden; color: var(--fg); }
+.code-hl .l { height: 21px; }
+.code-hl .l.bad { background: var(--err-soft); }
+.code-hl .l.warn { background: var(--warn-soft); }
+.code-hl .l.cur { box-shadow: inset 3px 0 0 var(--accent); background: var(--accent-soft); }
+.code-ta { resize: none; border: 0; background: transparent; color: transparent; caret-color: var(--fg); overflow: auto; outline: none; }
+.code-ta::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); color: transparent; }
+.k { color: var(--syn-kw); font-weight: 600; }
+.n { color: var(--syn-num); }
+.c { color: var(--syn-col); }
+.cm { color: var(--syn-com); font-style: italic; }
+.p { color: var(--syn-punc); }
+
+/* pipeline */
+.pipeline { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; padding: 12px; }
+@media (max-width: 560px) { .pipeline { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.stage { border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--sunk); text-align: left; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.stage .no { font-family: var(--font-mono); font-size: 11px; color: var(--muted); }
+.stage .nm { font-size: 12px; font-weight: 600; line-height: 1.25; }
+.stage .st { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 5px; }
+.stage .st::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.stage[data-s="ok"] { border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+.stage[data-s="ok"] .st { color: var(--ok); }
+.stage[data-s="warn"] { border-color: color-mix(in srgb, var(--warn) 55%, var(--line)); background: var(--warn-soft); }
+.stage[data-s="warn"] .st { color: var(--warn); }
+.stage[data-s="fail"] { border-color: var(--err); background: var(--err-soft); }
+.stage[data-s="fail"] .st { color: var(--err); }
+.stage[data-s="skip"] .st { color: var(--skip); }
+.stage[data-s="skip"] { opacity: 0.7; }
+
+/* diagnostics */
+.diags { list-style: none; margin: 0; padding: 6px; max-height: 260px; overflow: auto; }
+.diag { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; padding: 8px 8px; border-radius: 8px; cursor: pointer; }
+.diag:hover { background: var(--sunk); }
+.pill { font-family: var(--font-mono); font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 999px; height: fit-content; white-space: nowrap; }
+.pill.error { background: var(--err-soft); color: var(--err); }
+.pill.warning { background: var(--warn-soft); color: var(--warn); }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.diag .msg { font-weight: 500; }
+.diag .meta { grid-column: 2; color: var(--muted); font-size: 12px; }
+.diag .fix { grid-column: 2; font-size: 12.5px; }
+.diag .fix b { color: var(--accent); font-weight: 600; }
+.empty-note { color: var(--muted); padding: 12px 14px; margin: 0; }
+.okline { display: flex; align-items: center; gap: 8px; padding: 12px 14px; color: var(--ok); font-weight: 500; }
+
+/* drawing sheet */
+.sheet-wrap { position: relative; height: 520px; background: var(--paper); border-bottom: 1px solid var(--line); overflow: hidden; touch-action: none; }
+@media (max-width: 1000px) { .sheet-wrap { height: 420px; } }
+@media (max-width: 560px) { .sheet-wrap { height: 330px; } }
+.sheet-wrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: grab; }
+.sheet-wrap canvas.drag { cursor: grabbing; }
+.sheet-fail { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: #4a5753; font-weight: 500; background: color-mix(in srgb, #fcfdfc 85%, transparent); }
+.zoom { position: absolute; right: 10px; top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.zoom .btn { background: #ffffff; color: #16201c; border-color: #cfd8d4; }
+.readout { display: flex; flex-wrap: wrap; gap: 6px 18px; padding: 10px 12px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.readout span { color: var(--muted); }
+.readout b { font-family: var(--font-mono); font-weight: 500; color: var(--fg); font-variant-numeric: tabular-nums; }
+.swatch { display: inline-block; width: 11px; height: 11px; border-radius: 3px; border: 1px solid var(--line); vertical-align: -1px; margin-right: 4px; }
+.player { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; }
+.player input[type=range] { flex: 1 1 160px; accent-color: var(--accent); min-width: 0; }
+.player label { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.stepnow { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); padding: 0 12px 12px; }
+.stepnow b { color: var(--fg); font-weight: 500; }
+
+/* inspector */
+.tabs { display: flex; gap: 2px; overflow-x: auto; padding: 6px 6px 0; border-bottom: 1px solid var(--line); }
+.tab { border: 0; background: none; padding: 9px 12px; border-radius: 8px 8px 0 0; font-weight: 500; color: var(--muted); white-space: nowrap; display: flex; align-items: center; gap: 6px; border-bottom: 2px solid transparent; }
+.tab .cnt { font-family: var(--font-mono); font-size: 11px; background: var(--sunk); border: 1px solid var(--line); border-radius: 999px; padding: 0 6px; }
+.tab[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--accent); }
+.tab .ph { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+.tabpanel { padding: 14px; min-width: 0; }
+.scroll-x { overflow-x: auto; }
+.scroll-y { max-height: 460px; overflow: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; padding: 7px 10px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+td { padding: 6px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.mono, td .mono { font-size: 12.5px; }
+tr:last-child td { border-bottom: 0; }
+.tt { font-family: var(--font-mono); font-size: 11.5px; font-weight: 600; padding: 1px 6px; border-radius: 5px; background: var(--sunk); border: 1px solid var(--line); white-space: nowrap; }
+.tt.kw { color: var(--syn-kw); }
+.tt.lit { color: var(--syn-num); }
+.tt.id { color: var(--syn-col); }
+.intro { color: var(--muted); margin: 0 0 12px; max-width: 75ch; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.cols > * { min-width: 0; }
+.subhead { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+.metric-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.metric { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; min-width: 120px; }
+.metric .v { font-family: var(--font-mono); font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.metric .l { font-size: 12px; color: var(--muted); }
+.bar { height: 6px; border-radius: 3px; background: var(--sunk); border: 1px solid var(--line); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--accent); }
+.bar.over i { background: var(--err); }
+.rule-st { font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
+.rule-st.pass { color: var(--ok); } .rule-st.fail { color: var(--err); } .rule-st.na { color: var(--skip); }
+
+/* AST tree */
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree ul { padding-left: 22px; border-left: 1px dashed var(--line); margin-left: 9px; }
+.tree li { padding: 3px 0; }
+.node { display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.node .kind { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 5px; }
+.node .det { font-family: var(--font-mono); font-size: 12.5px; }
+.node .pos { font-size: 11.5px; color: var(--muted); }
+
+/* IR listing */
+.ir { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; margin: 0; }
+.ir .row { display: grid; grid-template-columns: 4.5ch minmax(0, 1fr) auto; gap: 10px; padding: 0 6px; border-radius: 4px; }
+.ir .row:hover { background: var(--sunk); }
+.ir .id { color: var(--muted); text-align: right; }
+.ir .op { color: var(--syn-kw); font-weight: 600; }
+.ir .op.loop { color: var(--syn-num); }
+.ir .src { color: var(--muted); }
+.ir .new { background: var(--accent-soft); }
+.diff-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.diff-grid > div { min-width: 0; border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.verified { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; padding: 4px 10px; border-radius: 999px; font-size: 12.5px; }
+.verified.ok { background: var(--ok-soft); color: var(--ok); }
+.verified.bad { background: var(--err-soft); color: var(--err); }
+
+/* ---------- reference ---------- */
+.ref { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 900px) { .ref { grid-template-columns: minmax(0, 1fr); } .toc { position: static !important; } }
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); display: flex; flex-direction: column; gap: 2px; padding: 12px; }
+.toc a { color: var(--muted); text-decoration: none; padding: 4px 8px; border-radius: 6px; font-size: 13px; }
+.toc a:hover { color: var(--fg); background: var(--sunk); }
+.toc .subhead { padding: 0 8px; }
+.doc { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.doc section { padding: 20px 22px; }
+.doc h2 { font-family: var(--font-display); font-size: 21px; margin: 0 0 6px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.doc h3 { font-size: 14px; margin: 18px 0 8px; font-weight: 600; }
+.doc p, .doc li { max-width: 75ch; }
+.doc p { margin: 0 0 10px; }
+.doc code { font-family: var(--font-mono); font-size: 12.5px; background: var(--sunk); border: 1px solid var(--line); padding: 0 5px; border-radius: 4px; }
+.doc pre.block { font-family: var(--font-mono); font-size: 12.5px; background: var(--sunk); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; margin: 0 0 10px; line-height: 1.6; }
+.doc .eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); font-weight: 600; margin-bottom: 4px; }
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: stretch; margin: 10px 0 4px; }
+.flow .box { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--sunk); min-width: 0; flex: 1 1 130px; }
+.flow .box b { display: block; font-size: 12.5px; }
+.flow .box span { font-size: 12px; color: var(--muted); }
+.flow .box .no { font-family: var(--font-mono); font-size: 11px; color: var(--accent); }
+.colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.color-chip { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 12.5px; }
+.color-chip i { width: 22px; height: 22px; border-radius: 5px; border: 1px solid var(--paper-edge); flex: none; }
+.color-chip .mono { color: var(--muted); font-size: 11.5px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<header class="topbar">
+  <div class="brand">
+    <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true">
+      <rect x="1" y="1" width="32" height="32" rx="8" fill="var(--accent)"/>
+      <path d="M9 24 L17 9 L25 24 Z" fill="none" stroke="var(--on-accent)" stroke-width="2.4" stroke-linejoin="round"/>
+      <circle cx="17" cy="19" r="2.4" fill="var(--on-accent)"/>
+    </svg>
+    <div>
+      <h1>TGL Compiler Visualiser</h1>
+      <p>Turtle Graphics Language, compiled through six phases and drawn from the generated target code</p>
+    </div>
+  </div>
+  <nav class="views" aria-label="Views">
+    <a href="#visualiser" id="nav-visualiser">Visualiser</a>
+    <a href="#reference" id="nav-reference">Language reference</a>
+  </nav>
+</header>
+
+<main>
+  <!-- ======================= VISUALISER ======================= -->
+  <div id="view-visualiser">
+    <div class="bench">
+      <div class="left">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Source</h2>
+            <span class="spacer"></span>
+            <label class="mono" for="sample" style="font-size:12px;color:var(--muted)">Sample</label>
+            <select id="sample" class="btn"></select>
+            <button id="reset" class="btn" type="button">Reset</button>
+            <button id="compile" class="btn primary" type="button">Compile</button>
+          </div>
+          <div class="editor">
+            <div class="gutter" id="gutter" aria-hidden="true"></div>
+            <div class="code-wrap">
+              <div class="code-hl" id="hl" aria-hidden="true"></div>
+              <textarea class="code-ta" id="src" spellcheck="false" wrap="off" autocapitalize="off" autocomplete="off" aria-label="TGL source code"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Compilation pipeline</h2><span class="spacer"></span><span id="ptime" class="mono" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="pipeline" id="pipeline"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-head"><h2>Diagnostics</h2><span class="spacer"></span><span id="dcount" class="mono" style="font-size:12px;color:var(--muted)"></span></div>
+          <div id="diags"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Drawing sheet</h2>
+          <span class="spacer"></span>
+          <span class="mono" style="font-size:12px;color:var(--muted)">800 × 600 units · origin top-left · y grows down</span>
+        </div>
+        <div class="sheet-wrap" id="sheetWrap">
+          <canvas id="sheet" aria-label="Rendered turtle drawing"></canvas>
+          <div class="zoom">
+            <button class="btn icon" type="button" id="zin" title="Zoom in" aria-label="Zoom in">+</button>
+            <button class="btn icon" type="button" id="zout" title="Zoom out" aria-label="Zoom out">−</button>
+            <button class="btn icon" type="button" id="zfit" title="Fit drawing to screen" aria-label="Fit drawing">⤢</button>
+            <button class="btn icon" type="button" id="zsheet" title="Show whole sheet" aria-label="Show whole sheet">▭</button>
+          </div>
+          <div class="sheet-fail" id="sheetFail" hidden></div>
+        </div>
+        <div class="readout" id="readout"></div>
+        <div class="player">
+          <button class="btn icon" type="button" id="pFirst" title="Go to start" aria-label="Go to start">⏮</button>
+          <button class="btn icon" type="button" id="pBack" title="Step back" aria-label="Step back">◀</button>
+          <button class="btn primary" type="button" id="pPlay" style="min-width:76px">▶ Play</button>
+          <button class="btn icon" type="button" id="pFwd" title="Step forward" aria-label="Step forward">▶|</button>
+          <button class="btn icon" type="button" id="pLast" title="Go to end" aria-label="Go to end">⏭</button>
+          <input type="range" id="pRange" min="0" max="0" value="0" aria-label="Execution step">
+          <label for="pSpeed">Speed
+            <select id="pSpeed" class="btn">
+              <option value="2">2 steps/s</option>
+              <option value="8">8 steps/s</option>
+              <option value="25" selected>25 steps/s</option>
+              <option value="80">80 steps/s</option>
+              <option value="300">300 steps/s</option>
+            </select>
+          </label>
+        </div>
+        <div class="stepnow" id="stepnow"></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div class="tabpanel" id="tabpanel"></div>
+    </div>
+  </div>
+
+  <!-- ======================= REFERENCE ======================= -->
+  <div id="view-reference" hidden>
+    <div class="ref">
+      <nav class="panel toc" aria-label="Reference contents">
+        <div class="subhead">Contents</div>
+        <a href="#reference" data-goto="r-overview">Overview and pipeline</a>
+        <a href="#reference" data-goto="r-commands">Commands</a>
+        <a href="#reference" data-goto="r-turtle">Turtle and coordinates</a>
+        <a href="#reference" data-goto="r-lexical">Lexical rules</a>
+        <a href="#reference" data-goto="r-tokens">Token types</a>
+        <a href="#reference" data-goto="r-grammar">Grammar (EBNF)</a>
+        <a href="#reference" data-goto="r-semantic">Semantic rules and limits</a>
+        <a href="#reference" data-goto="r-colors">Colors</a>
+        <a href="#reference" data-goto="r-codes">Error and warning codes</a>
+        <a href="#reference" data-goto="r-ir">Intermediate code</a>
+        <a href="#reference" data-goto="r-opt">Optimization passes</a>
+        <a href="#reference" data-goto="r-target">Target code and drawing</a>
+      </nav>
+      <div class="doc" id="doc"></div>
+    </div>
+  </div>
+</main>
+
+<script id="core">
+/* =====================================================================
+   TGL COMPILER CORE  (pure functions, no DOM)
+   Phase 1 lex · Phase 2 parse · Phase 3 analyze · Phase 4 genIR
+   Phase 5 optimize · Phase 6 codegen + execute
+   ===================================================================== */
+
+const LIMITS = {
+  minMove: 0, maxMove: 1000,
+  minTurn: 0, maxTurn: 360,
+  minRepeat: 1, maxRepeat: 100,
+  maxDepth: 10, maxOps: 10000,
+  maxTokenLength: 64, maxSourceLength: 65536,
+  maxPasses: 20, canvasW: 800, canvasH: 600
+};
+
+const COLORS = {
+  BLACK: "#000000", WHITE: "#FFFFFF", RED: "#E03131", GREEN: "#2F9E44",
+  BLUE: "#1971C2", YELLOW: "#F2B705", ORANGE: "#F76707", PURPLE: "#7048E8",
+  PINK: "#E64980", CYAN: "#15AABF", MAGENTA: "#C2255C", GRAY: "#868E96"
+};
+const COLOR_ALIASES = { GREY: "GRAY" };
+
+const CORE_COMMANDS = ["PEN", "MOVE", "TURN", "REPEAT", "PENUP", "PENDOWN", "CLEAR"];
+const EXT_COMMANDS = ["SETX", "SETY", "GOTO", "CIRCLE", "WAIT"];
+const KEYWORDS = CORE_COMMANDS.concat(EXT_COMMANDS);
+
+const SIGNATURES = {
+  PEN:     { args: "1 color",   example: "PEN BLUE;" },
+  MOVE:    { args: "1 number",  example: "MOVE 100;" },
+  TURN:    { args: "1 number",  example: "TURN 90;" },
+  REPEAT:  { args: "1 whole number + block", example: "REPEAT 4 { MOVE 100; TURN 90; }" },
+  PENUP:   { args: "none",      example: "PENUP;" },
+  PENDOWN: { args: "none",      example: "PENDOWN;" },
+  CLEAR:   { args: "none",      example: "CLEAR;" },
+  SETX:    { args: "1 number",  example: "SETX 200;" },
+  SETY:    { args: "1 number",  example: "SETY 150;" },
+  GOTO:    { args: "2 numbers", example: "GOTO 200, 150;" },
+  CIRCLE:  { args: "1 number",  example: "CIRCLE 50;" },
+  WAIT:    { args: "1 number",  example: "WAIT 500;" }
+};
+
+const PHASES = [
+  { key: "lex", name: "Lexical analysis", short: "Lexer" },
+  { key: "parse", name: "Syntax analysis", short: "Parser" },
+  { key: "sem", name: "Semantic analysis", short: "Semantic" },
+  { key: "ir", name: "Intermediate code", short: "IR" },
+  { key: "opt", name: "Optimization", short: "Optimizer" },
+  { key: "target", name: "Target code", short: "Target" }
+];
+
+/* Every diagnostic the compiler can produce. [phase, severity, title, how to fix] */
+const CODES = {
+  L001: ["Lexical", "error", "Invalid character", "Remove it. TGL uses words, numbers, { } ; , and // comments only."],
+  L002: ["Lexical", "error", "Minus sign without a number", "Put the minus directly before digits (-50) or remove it."],
+  L003: ["Lexical", "error", "Single slash", "Comments start with two slashes: // like this"],
+  L004: ["Lexical", "error", "Block comment not supported", "Start each comment line with // instead of /* */."],
+  L005: ["Lexical", "error", "Malformed number", "Write numbers like 100 or 12.5, with digits on both sides of the point."],
+  L006: ["Lexical", "error", "Number has two decimal points", "Keep one decimal point, e.g. 12.5"],
+  L007: ["Lexical", "error", "Invalid hex color", "A hex color is # followed by exactly 6 hex digits, e.g. #1E90FF"],
+  L008: ["Lexical", "error", "Token too long", "Names and numbers can be at most " + LIMITS.maxTokenLength + " characters."],
+  L009: ["Lexical", "error", "Program too long", "Keep the source under " + LIMITS.maxSourceLength.toLocaleString("en-US") + " characters."],
+  L010: ["Lexical", "error", "Empty program", "Write at least one command, e.g. MOVE 100;"],
+  P001: ["Syntax", "error", "Unknown command", "Use one of: " + CORE_COMMANDS.join(", ") + "."],
+  P002: ["Syntax", "error", "Missing argument", "Give the command its value, e.g. MOVE 100;"],
+  P003: ["Syntax", "error", "Missing semicolon", "End every command with ;"],
+  P004: ["Syntax", "error", "Missing {", "Write { after the REPEAT count: REPEAT 4 { ... }"],
+  P005: ["Syntax", "error", "Unexpected }", "Remove the extra } or add the REPEAT it should close."],
+  P006: ["Syntax", "error", "REPEAT block never closed", "Add } at the end of the REPEAT body."],
+  P007: ["Syntax", "error", "Too many arguments", "Remove the extra value."],
+  P008: ["Syntax", "error", "Wrong kind of argument", "MOVE, TURN and REPEAT take numbers; PEN takes a color name."],
+  P009: ["Syntax", "error", "Unexpected token", "Start each statement with a command such as MOVE or TURN."],
+  S001: ["Semantic", "error", "Command not available in TGL v1", "SETX, SETY, GOTO, CIRCLE and WAIT are planned extensions. Use the core commands."],
+  S003: ["Semantic", "error", "MOVE distance out of range", "Use a distance from " + LIMITS.minMove + " to " + LIMITS.maxMove + "."],
+  S005: ["Semantic", "error", "TURN angle out of range", "Use an angle from " + LIMITS.minTurn + " to " + LIMITS.maxTurn + " degrees."],
+  S006: ["Semantic", "error", "Unknown color", "Use a named color (see the reference) or a hex color like #1E90FF."],
+  S007: ["Semantic", "error", "Invalid REPEAT count", "Use a whole number from " + LIMITS.minRepeat + " to " + LIMITS.maxRepeat + "."],
+  S008: ["Semantic", "error", "REPEAT nested too deeply", "Use at most " + LIMITS.maxDepth + " nested REPEAT blocks."],
+  S010: ["Semantic", "error", "Number is not finite", "Use an ordinary decimal number."],
+  S012: ["Semantic", "error", "Too many operations", "Lower REPEAT counts so the program runs at most " + LIMITS.maxOps.toLocaleString("en-US") + " commands."],
+  W001: ["Semantic", "warning", "MOVE 0 does nothing", "Remove it. The optimizer removes it anyway."],
+  W002: ["Semantic", "warning", "TURN does not change the heading", "TURN 0 and TURN 360 leave the heading unchanged. Remove it."],
+  W004: ["Semantic", "warning", "Empty REPEAT block", "Add statements to the block or remove it."],
+  W005: ["Semantic", "warning", "REPEAT block never moves the turtle", "The loop contains no MOVE, so it draws nothing by itself."],
+  W006: ["Semantic", "warning", "Program draws nothing", "Add a MOVE with the pen down."],
+  W007: ["Semantic", "warning", "Same color set twice in a row", "Remove the second PEN."],
+  W010: ["Target generation", "warning", "Drawing leaves the sheet", "Shorten moves or start with PENUP and a MOVE to reposition."]
+};
+
+function diag(code, line, col, message, extraFix) {
+  const c = CODES[code];
+  return { isDiag: true, code, phase: c[0], severity: c[1], title: c[2], message,
+           line, col, fix: extraFix || c[3] };
+}
+
+/* ------------------------------ helpers ------------------------------ */
+const isDigit = (c) => c >= "0" && c <= "9";
+const isAlpha = (c) => (c >= "A" && c <= "Z") || (c >= "a" && c <= "z") || c === "_";
+const isAlnum = (c) => isAlpha(c) || isDigit(c);
+function snap(v) { const r = Math.round(v); return Math.abs(v - r) < 1e-9 ? r : v; }
+function mod360(v) { let r = snap(((v % 360) + 360) % 360); if (Math.abs(r - 360) < 1e-9) r = 0; return r; }
+function fmt(v) { if (!isFinite(v)) return String(v); const r = Math.round(v * 10000) / 10000; return String(Object.is(r, -0) ? 0 : r); }
+function levenshtein(a, b) {
+  const d = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) d[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[a.length][b.length];
+}
+function closest(word, list) {
+  let best = null, bestD = 3;
+  for (const w of list) { const dd = levenshtein(word.toUpperCase(), w); if (dd < bestD) { bestD = dd; best = w; } }
+  return best;
+}
+function colorHex(name) {
+  const up = name.toUpperCase();
+  if (COLORS[up]) return COLORS[up];
+  if (COLOR_ALIASES[up]) return COLORS[COLOR_ALIASES[up]];
+  return null;
+}
+function colorLabel(hex) {
+  for (const k in COLORS) if (COLORS[k].toUpperCase() === hex.toUpperCase()) return k;
+  return hex.toUpperCase();
+}
+
+/* ======================= PHASE 1: LEXICAL ANALYSIS ======================= */
+function lex(src) {
+  if (src.length > LIMITS.maxSourceLength)
+    throw diag("L009", 1, 1, "The program has " + src.length.toLocaleString("en-US") + " characters; the limit is " + LIMITS.maxSourceLength.toLocaleString("en-US") + ".");
+  const tokens = [];
+  let i = 0, line = 1, col = 1;
+  const adv = () => { const c = src[i++]; if (c === "\n") { line++; col = 1; } else col++; return c; };
+  const push = (type, lexeme, sl, sc, so) => tokens.push({ type, lexeme, line: sl, col: sc, start: so, end: i });
+
+  while (i < src.length) {
+    const c = src[i];
+    if (c === " " || c === "\t" || c === "\r" || c === "\n") { adv(); continue; }
+    const sl = line, sc = col, so = i;
+
+    if (c === "/") {
+      if (src[i + 1] === "/") { while (i < src.length && src[i] !== "\n") adv(); continue; }
+      if (src[i + 1] === "*") throw diag("L004", sl, sc, "Block comments (/* ... */) are not part of TGL.");
+      throw diag("L003", sl, sc, "A single '/' is not valid. Did you mean a // comment?");
+    }
+
+    if (isAlpha(c)) {
+      let s = "";
+      while (i < src.length && isAlnum(src[i])) s += adv();
+      if (s.length > LIMITS.maxTokenLength) throw diag("L008", sl, sc, "This name is " + s.length + " characters long.");
+      const up = s.toUpperCase();
+      push(KEYWORDS.includes(up) ? up : "IDENTIFIER", s, sl, sc, so);
+      continue;
+    }
+
+    if (isDigit(c) || (c === "-" && isDigit(src[i + 1] || ""))) {
+      let s = adv();
+      while (i < src.length && isDigit(src[i])) s += adv();
+      let type = "INTEGER";
+      if (src[i] === ".") {
+        s += adv();
+        if (!isDigit(src[i] || "")) throw diag("L005", sl, sc, "'" + s + "' needs a digit after the decimal point.");
+        while (i < src.length && isDigit(src[i])) s += adv();
+        type = "FLOAT";
+        if (src[i] === ".") {
+          while (i < src.length && (isDigit(src[i]) || src[i] === ".")) s += adv();
+          throw diag("L006", sl, sc, "'" + s + "' has more than one decimal point.");
+        }
+      }
+      if (i < src.length && isAlpha(src[i])) {
+        while (i < src.length && isAlnum(src[i])) s += adv();
+        throw diag("L005", sl, sc, "'" + s + "' mixes digits and letters. Names cannot start with a digit.");
+      }
+      if (s.length > LIMITS.maxTokenLength) throw diag("L008", sl, sc, "This number is " + s.length + " characters long.");
+      push(type, s, sl, sc, so);
+      continue;
+    }
+
+    if (c === "-") throw diag("L002", sl, sc, "'-' must be followed directly by digits, e.g. -50.");
+    if (c === ".") {
+      if (isDigit(src[i + 1] || "")) throw diag("L005", sl, sc, "A number cannot start with '.'. Write 0" + src.slice(i, i + 4).replace(/[^0-9.]/g, "") + " instead.");
+      throw diag("L001", sl, sc, "Unexpected character '.'.");
+    }
+    if (c === "#") {
+      let s = adv();
+      while (i < src.length && isAlnum(src[i])) s += adv();
+      if (!/^#[0-9A-Fa-f]{6}$/.test(s)) throw diag("L007", sl, sc, "'" + s + "' is not a valid hex color.");
+      push("HEX_COLOR", s, sl, sc, so);
+      continue;
+    }
+    const sym = { "{": "LBRACE", "}": "RBRACE", ";": "SEMICOLON", ",": "COMMA" }[c];
+    if (sym) { adv(); push(sym, c, sl, sc, so); continue; }
+
+    const code = c.codePointAt(0);
+    const shown = code < 32 || code > 126 ? "U+" + code.toString(16).toUpperCase().padStart(4, "0") : "'" + c + "'";
+    throw diag("L001", sl, sc, "Unexpected character " + shown + (code > 126 ? " (only plain ASCII is allowed)" : "") + ".");
+  }
+  tokens.push({ type: "EOF", lexeme: "", line, col, start: i, end: i });
+  if (tokens.length === 1) throw diag("L010", 1, 1, "The program contains no commands (only spaces or comments).");
+  return tokens;
+}
+
+/* ======================= PHASE 2: SYNTAX ANALYSIS ======================= */
+function parse(tokens) {
+  let p = 0;
+  const peek = () => tokens[p];
+  const prev = () => tokens[p - 1];
+  const isNumTok = (t) => t.type === "INTEGER" || t.type === "FLOAT";
+  const afterPrev = () => { const t = prev(); return [t.line, t.col + t.lexeme.length]; };
+  const numNode = (t) => ({ kind: "Number", value: parseFloat(t.lexeme), lexeme: t.lexeme, isInteger: t.type === "INTEGER", line: t.line, col: t.col });
+
+  function numberArg(cmd, what) {
+    const t = peek();
+    if (["SEMICOLON", "EOF", "RBRACE", "LBRACE"].includes(t.type)) {
+      const [l, c] = afterPrev();
+      throw diag("P002", l, c, cmd.lexeme.toUpperCase() + " needs " + what + ". Example: " + SIGNATURES[cmd.type].example);
+    }
+    if (!isNumTok(t)) throw diag("P008", t.line, t.col, cmd.lexeme.toUpperCase() + " expects a number, but found '" + t.lexeme + "'.");
+    p++;
+    return numNode(t);
+  }
+
+  function endStatement(cmd, described) {
+    const t = peek();
+    if (t.type === "SEMICOLON") { p++; return; }
+    const sameLine = t.line === prev().line;
+    if (sameLine && ["INTEGER", "FLOAT", "IDENTIFIER", "HEX_COLOR", "COMMA"].includes(t.type)) {
+      const takes = { PENUP: "takes no arguments", PENDOWN: "takes no arguments", CLEAR: "takes no arguments",
+                      PEN: "takes exactly one color", GOTO: "takes exactly two numbers" }[cmd.type] || "takes exactly one value";
+      throw diag("P007", t.line, t.col, cmd.lexeme.toUpperCase() + " " + takes + "; '" + t.lexeme + "' is extra.");
+    }
+    const [l, c] = afterPrev();
+    throw diag("P003", l, c, "Missing ';' after " + described + ".");
+  }
+
+  function statement() {
+    const t = peek();
+    switch (t.type) {
+      case "PEN": {
+        p++;
+        const a = peek();
+        if (["SEMICOLON", "EOF", "RBRACE"].includes(a.type)) { const [l, c] = afterPrev(); throw diag("P002", l, c, "PEN needs a color. Example: PEN BLUE;"); }
+        if (a.type !== "IDENTIFIER" && a.type !== "HEX_COLOR") throw diag("P008", a.line, a.col, "PEN expects a color name, but found '" + a.lexeme + "'.");
+        p++;
+        const color = { kind: "Color", name: a.lexeme, isHex: a.type === "HEX_COLOR", line: a.line, col: a.col };
+        endStatement(t, "PEN " + a.lexeme);
+        return { kind: "Pen", color, line: t.line, col: t.col };
+      }
+      case "MOVE": case "TURN": case "SETX": case "SETY": case "CIRCLE": case "WAIT": {
+        p++;
+        const what = { MOVE: "a distance", TURN: "an angle", SETX: "an x value", SETY: "a y value", CIRCLE: "a radius", WAIT: "a time in milliseconds" }[t.type];
+        const arg = numberArg(t, what);
+        endStatement(t, t.lexeme.toUpperCase() + " " + arg.lexeme);
+        const kind = { MOVE: "Move", TURN: "Turn" }[t.type] || "Extension";
+        return { kind, command: t.type, arg, args: [arg], line: t.line, col: t.col };
+      }
+      case "GOTO": {
+        p++;
+        const x = numberArg(t, "an x and a y value");
+        if (peek().type !== "COMMA") { const [l, c] = afterPrev(); throw diag("P002", l, c, "GOTO needs two numbers separated by a comma. Example: GOTO 200, 150;"); }
+        p++;
+        const y = numberArg(t, "a y value after the comma");
+        endStatement(t, "GOTO " + x.lexeme + ", " + y.lexeme);
+        return { kind: "Extension", command: "GOTO", args: [x, y], line: t.line, col: t.col };
+      }
+      case "PENUP": case "PENDOWN": case "CLEAR": {
+        p++;
+        endStatement(t, t.lexeme.toUpperCase());
+        return { kind: { PENUP: "PenUp", PENDOWN: "PenDown", CLEAR: "Clear" }[t.type], line: t.line, col: t.col };
+      }
+      case "REPEAT": {
+        p++;
+        if (peek().type === "LBRACE") { const [l, c] = afterPrev(); throw diag("P002", l, c, "REPEAT needs a count before '{'. Example: REPEAT 4 { ... }"); }
+        const count = numberArg(t, "a count");
+        if (peek().type !== "LBRACE") {
+          const n = peek();
+          if (n.line === prev().line && (isNumTok(n) || n.type === "IDENTIFIER"))
+            throw diag("P007", n.line, n.col, "REPEAT takes exactly one count; '" + n.lexeme + "' is extra.");
+          const [l, c] = afterPrev();
+          throw diag("P004", l, c, "Expected '{' after REPEAT " + count.lexeme + ".");
+        }
+        p++;
+        const body = [];
+        while (peek().type !== "RBRACE") {
+          if (peek().type === "EOF") throw diag("P006", t.line, t.col, "The REPEAT block opened on line " + t.line + " is never closed with '}'.");
+          body.push(statement());
+        }
+        const close = peek();
+        p++;
+        return { kind: "Repeat", count, body, line: t.line, col: t.col, endLine: close.line };
+      }
+      case "IDENTIFIER": {
+        const guess = closest(t.lexeme, KEYWORDS);
+        throw diag("P001", t.line, t.col, "'" + t.lexeme + "' is not a command." + (guess ? " Did you mean " + guess + "?" : ""),
+                   guess ? "Replace it with " + guess + "." : undefined);
+      }
+      case "RBRACE":
+        throw diag("P005", t.line, t.col, "This '}' does not close any REPEAT block.");
+      default:
+        throw diag("P009", t.line, t.col, t.type === "EOF" ? "Unexpected end of program." : "A statement cannot start with '" + t.lexeme + "'.");
+    }
+  }
+
+  const body = [];
+  while (peek().type !== "EOF") body.push(statement());
+  return { kind: "Program", body, line: 1, col: 1 };
+}
+
+/* ======================= PHASE 3: SEMANTIC ANALYSIS ======================= */
+const RULES = [
+  ["S1", "Every command is supported in TGL v1", ["S001"]],
+  ["S2", "MOVE has a numeric distance", [], "grammar"],
+  ["S3", "MOVE distance is from " + LIMITS.minMove + " to " + LIMITS.maxMove, ["S003"], "Move"],
+  ["S4", "TURN has a numeric angle", [], "grammar"],
+  ["S5", "TURN angle is from " + LIMITS.minTurn + " to " + LIMITS.maxTurn + " degrees", ["S005"], "Turn"],
+  ["S6", "PEN uses a supported color", ["S006"], "Pen"],
+  ["S7", "REPEAT count is a whole number from " + LIMITS.minRepeat + " to " + LIMITS.maxRepeat, ["S007"], "Repeat"],
+  ["S8", "REPEAT nesting depth is at most " + LIMITS.maxDepth, ["S008"], "Repeat"],
+  ["S9", "REPEAT bodies contain only valid statements", ["inside-loop"], "Repeat"],
+  ["S10", "Every number is finite", ["S010"]],
+  ["S11", "Every command has the right number of arguments", [], "grammar"],
+  ["S12", "At most " + LIMITS.maxOps.toLocaleString("en-US") + " operations are executed", ["S012"]],
+  ["S13", "Extension commands follow their own rules", ["S001"], "Extension"]
+];
+
+function analyze(ast) {
+  const errors = [], warnings = [];
+  const kindsSeen = new Set();
+  const usage = {};        // command -> {count, executions, lines}
+  const colorsUsed = {};   // hex -> {name, count}
+  let statements = 0, maxDepth = 0, depthReported = false, errorsInLoops = 0;
+
+  function use(cmd, line, mult) {
+    const u = usage[cmd] || (usage[cmd] = { count: 0, executions: 0, lines: [] });
+    u.count++; u.executions += mult; if (u.lines.length < 12) u.lines.push(line);
+  }
+  function checkFinite(n) {
+    if (!isFinite(n.value)) { errors.push(diag("S010", n.line, n.col, "'" + n.lexeme + "' is not a finite number.")); return false; }
+    return true;
+  }
+  function err(d, inLoop) { errors.push(d); if (inLoop) errorsInLoops++; }
+
+  function walk(stmts, depth, mult) {
+    let prevPen = null;
+    for (const s of stmts) {
+      statements++;
+      kindsSeen.add(s.kind);
+      const inLoop = depth > 0;
+      switch (s.kind) {
+        case "Pen": {
+          use("PEN", s.line, mult);
+          let hex = null;
+          if (s.color.isHex) hex = s.color.name.toUpperCase();
+          else hex = colorHex(s.color.name);
+          if (!hex) {
+            const g = closest(s.color.name, Object.keys(COLORS));
+            err(diag("S006", s.color.line, s.color.col, "'" + s.color.name + "' is not a supported color." + (g ? " Did you mean " + g + "?" : ""),
+                     g ? "Use " + g + ", another named color, or a hex color like #1E90FF." : undefined), inLoop);
+          } else {
+            const c = colorsUsed[hex] || (colorsUsed[hex] = { name: s.color.isHex ? hex : s.color.name.toUpperCase(), count: 0 });
+            c.count++;
+            if (prevPen === hex) warnings.push(diag("W007", s.line, s.col, "The pen is already " + colorLabel(hex) + "."));
+            prevPen = hex;
+          }
+          continue;
+        }
+        case "Move": {
+          use("MOVE", s.line, mult);
+          const v = s.arg;
+          if (checkFinite(v)) {
+            if (v.value < LIMITS.minMove || v.value > LIMITS.maxMove)
+              err(diag("S003", v.line, v.col, "MOVE " + v.lexeme + " is outside " + LIMITS.minMove + " to " + LIMITS.maxMove + "." + (v.value < 0 ? " Negative distances are not allowed; turn 180 degrees instead." : "")), inLoop);
+            else if (v.value === 0) warnings.push(diag("W001", s.line, s.col, "MOVE 0 does not move the turtle."));
+          }
+          break;
+        }
+        case "Turn": {
+          use("TURN", s.line, mult);
+          const v = s.arg;
+          if (checkFinite(v)) {
+            if (v.value < LIMITS.minTurn || v.value > LIMITS.maxTurn)
+              err(diag("S005", v.line, v.col, "TURN " + v.lexeme + " is outside " + LIMITS.minTurn + " to " + LIMITS.maxTurn + " degrees." + (v.value < 0 ? " To turn the other way, use 360 minus the angle (TURN " + fmt(360 + (v.value % 360)) + ")." : "")), inLoop);
+            else if (v.value === 0 || v.value === 360) warnings.push(diag("W002", s.line, s.col, "TURN " + v.lexeme + " leaves the heading unchanged."));
+          }
+          break;
+        }
+        case "PenUp": use("PENUP", s.line, mult); break;
+        case "PenDown": use("PENDOWN", s.line, mult); break;
+        case "Clear": use("CLEAR", s.line, mult); break;
+        case "Extension": {
+          use(s.command, s.line, mult);
+          err(diag("S001", s.line, s.col, s.command + " is a planned extension and is not enabled in TGL v1."), inLoop);
+          s.args.forEach(checkFinite);
+          break;
+        }
+        case "Repeat": {
+          use("REPEAT", s.line, mult);
+          const c = s.count;
+          let n = 1;
+          if (checkFinite(c)) {
+            if (!c.isInteger) err(diag("S007", c.line, c.col, "REPEAT " + c.lexeme + " is not a whole number of repetitions."), inLoop);
+            else if (c.value < LIMITS.minRepeat || c.value > LIMITS.maxRepeat) err(diag("S007", c.line, c.col, "REPEAT " + c.lexeme + " is outside " + LIMITS.minRepeat + " to " + LIMITS.maxRepeat + "."), inLoop);
+            n = Math.max(0, Math.floor(c.value));
+          }
+          const d = depth + 1;
+          maxDepth = Math.max(maxDepth, d);
+          if (d > LIMITS.maxDepth && !depthReported) {
+            depthReported = true;
+            err(diag("S008", s.line, s.col, "This REPEAT is nested " + d + " levels deep; the limit is " + LIMITS.maxDepth + "."), inLoop);
+          }
+          if (s.body.length === 0) warnings.push(diag("W004", s.line, s.col, "REPEAT " + c.lexeme + " has an empty body."));
+          else if (!containsKind(s.body, "Move")) warnings.push(diag("W005", s.line, s.col, "This REPEAT block contains no MOVE, so it never moves the turtle."));
+          walk(s.body, d, mult * n);
+          break;
+        }
+      }
+      prevPen = s.kind === "Turn" || s.kind === "PenUp" || s.kind === "PenDown" ? prevPen : (s.kind === "Pen" ? prevPen : null);
+    }
+  }
+  walk(ast.body, 0, 1);
+
+  // S12: static count of executed operations (loops are counted, so this is exact)
+  const total = staticOps(ast.body);
+  if (total > LIMITS.maxOps) {
+    let worst = ast.body[0], worstOps = -1;
+    for (const s of ast.body) { const o = staticOps([s]); if (o > worstOps) { worstOps = o; worst = s; } }
+    errors.push(diag("S012", worst.line, worst.col, "The program would execute " + total.toLocaleString("en-US") + " operations; the limit is " + LIMITS.maxOps.toLocaleString("en-US") + "."));
+  }
+  if (!errors.length && !containsKind(ast.body, "Move")) warnings.push(diag("W006", 1, 1, "No MOVE command, so nothing is drawn."));
+
+  // Rule status table
+  const codesFound = new Set(errors.map((e) => e.code));
+  const rules = RULES.map(([id, text, codes, applies]) => {
+    let status = "pass", note = "";
+    if (applies === "grammar") { note = "guaranteed by the grammar"; }
+    else if (applies && !kindsSeen.has(applies)) { status = "na"; note = "not used"; }
+    if (codes.includes("inside-loop") && errorsInLoops > 0) { status = "fail"; note = errorsInLoops + " error(s) inside loops"; }
+    for (const c of codes) if (codesFound.has(c)) { status = "fail"; note = errors.filter((e) => e.code === c).length + " error(s)"; }
+    if (id === "S13" && status !== "fail") { status = kindsSeen.has("Extension") ? "fail" : "na"; note = kindsSeen.has("Extension") ? "" : "no extension commands"; }
+    if (id === "S12" && status === "pass") note = total.toLocaleString("en-US") + " of " + LIMITS.maxOps.toLocaleString("en-US");
+    if (id === "S8" && status === "pass") note = "deepest: " + maxDepth;
+    return { id, text, status, note };
+  });
+
+  return {
+    errors, warnings, rules, usage, colorsUsed,
+    metrics: { statements, topLevel: ast.body.length, maxDepth, ops: total }
+  };
+}
+function containsKind(stmts, kind) {
+  return stmts.some((s) => s.kind === kind || (s.kind === "Repeat" && containsKind(s.body, kind)));
+}
+function staticOps(stmts) {
+  let t = 0;
+  for (const s of stmts) {
+    if (s.kind === "Repeat") {
+      const n = isFinite(s.count.value) ? Math.max(0, Math.floor(s.count.value)) : 0;
+      t += n * staticOps(s.body);
+    } else t += 1;
+    if (t > 1e15) return 1e15;
+  }
+  return t;
+}
+
+/* ================== PHASE 4: INTERMEDIATE CODE (structured IR) ================== */
+function genIR(ast) {
+  const ctx = { next: 1 };
+  function gen(stmts) {
+    const out = [];
+    for (const s of stmts) {
+      switch (s.kind) {
+        case "Pen": {
+          const hex = s.color.isHex ? s.color.name.toUpperCase() : colorHex(s.color.name);
+          out.push({ id: ctx.next++, op: "SET_PEN", color: hex, line: s.line }); break;
+        }
+        case "Move": out.push({ id: ctx.next++, op: "MOVE", v: s.arg.value, line: s.line }); break;
+        case "Turn": out.push({ id: ctx.next++, op: "TURN", v: s.arg.value, line: s.line }); break;
+        case "PenUp": out.push({ id: ctx.next++, op: "PEN_UP", line: s.line }); break;
+        case "PenDown": out.push({ id: ctx.next++, op: "PEN_DOWN", line: s.line }); break;
+        case "Clear": out.push({ id: ctx.next++, op: "CLEAR", line: s.line }); break;
+        case "Repeat": {
+          const node = { id: ctx.next++, op: "LOOP", count: s.count.value, line: s.line, endLine: s.endLine };
+          node.body = gen(s.body);
+          node.endId = ctx.next++;
+          out.push(node); break;
+        }
+      }
+    }
+    return out;
+  }
+  return { tree: gen(ast.body), next: ctx.next };
+}
+
+/* Flat listing of a structured IR tree: LOOP becomes LOOP_BEGIN ... LOOP_END */
+function irListing(tree) {
+  const rows = [];
+  (function walk(b, depth) {
+    for (const n of b) {
+      if (n.op === "LOOP") {
+        rows.push({ id: n.id, depth, op: "LOOP_BEGIN", arg: fmt(n.count) + "   [L" + n.id + "]", line: n.line, isNew: n.isNew, loop: true });
+        walk(n.body, depth + 1);
+        rows.push({ id: n.endId, depth, op: "LOOP_END", arg: "[L" + n.id + "]", line: n.endLine, isNew: n.isNew, loop: true });
+      } else rows.push({ id: n.id, depth, op: n.op, arg: irArg(n), line: n.line, isNew: n.isNew });
+    }
+  })(tree, 0);
+  return rows;
+}
+function irArg(n) {
+  if (n.op === "SET_PEN") return colorLabel(n.color);
+  if (n.op === "MOVE" || n.op === "TURN") return fmt(n.v);
+  return "";
+}
+function irText(n) {
+  if (n.op === "LOOP") return "LOOP " + fmt(n.count) + " { " + n.body.map(irText).join("; ") + " }";
+  const a = irArg(n); return n.op + (a ? " " + a : "");
+}
+function irCount(tree) { let c = 0; for (const n of tree) c += n.op === "LOOP" ? 2 + irCount(n.body) : 1; return c; }
+function dynCount(tree) { let c = 0; for (const n of tree) c += n.op === "LOOP" ? n.count * dynCount(n.body) : 1; return c; }
+function clone(tree) { return JSON.parse(JSON.stringify(tree)); }
+
+/* ======================= PHASE 5: OPTIMIZATION ======================= */
+function optimize(irTree, nextId) {
+  const ctx = { next: nextId, log: [] };
+  const mk = (props, from) => Object.assign({ id: ctx.next++, isNew: true, mergedFrom: from }, props);
+  const log = (pass, rule, before, after, line) => ctx.log.push({ pass, rule, before, after, line });
+  const has = (b, ops) => b.some((n) => ops.includes(n.op) || (n.op === "LOOP" && has(n.body, ops)));
+
+  // Pass 1: remove MOVE 0 and TURN by a multiple of 360
+  function p1(block) {
+    let changed = false; const out = [];
+    for (const n of block) {
+      if (n.op === "LOOP") { const r = p1(n.body); changed = changed || r.changed; out.push(Object.assign({}, n, { body: r.block })); continue; }
+      if (n.op === "MOVE" && n.v === 0) { log(1, "No-op MOVE removed", irText(n), "(removed)", n.line); changed = true; continue; }
+      if (n.op === "TURN" && mod360(n.v) === 0) { log(1, "Full or zero TURN removed", irText(n), "(removed)", n.line); changed = true; continue; }
+      out.push(n);
+    }
+    return { block: out, changed };
+  }
+
+  // Pass 2: remove pen settings that do not change the known pen state
+  function p2(block, state) {
+    let changed = false; const out = [];
+    for (const n of block) {
+      if (n.op === "SET_PEN") {
+        if (state.color === n.color) { log(2, "Pen already this color", irText(n), "(removed)", n.line); changed = true; continue; }
+        state.color = n.color;
+      } else if (n.op === "PEN_UP" || n.op === "PEN_DOWN") {
+        const want = n.op === "PEN_UP" ? "up" : "down";
+        if (state.pen === want) { log(2, "Pen already " + want, irText(n), "(removed)", n.line); changed = true; continue; }
+        state.pen = want;
+      } else if (n.op === "LOOP") {
+        const changesColor = has(n.body, ["SET_PEN"]);
+        const changesPen = has(n.body, ["PEN_UP", "PEN_DOWN"]);
+        const inner = { color: changesColor ? null : state.color, pen: changesPen ? null : state.pen };
+        const r = p2(n.body, inner);
+        changed = changed || r.changed;
+        out.push(Object.assign({}, n, { body: r.block }));
+        if (changesColor) state.color = inner.color;   // known only if the body ends in a known color
+        if (changesPen) state.pen = inner.pen;
+        continue;
+      }
+      out.push(n);
+    }
+    return { block: out, changed };
+  }
+
+  // Pass 3 and 4: combine adjacent TURNs / adjacent MOVEs in the same block
+  function combine(block, op, passNo) {
+    let changed = false; const out = [];
+    for (const n of block) {
+      if (n.op === "LOOP") { const r = combine(n.body, op, passNo); changed = changed || r.changed; out.push(Object.assign({}, n, { body: r.block })); continue; }
+      const last = out[out.length - 1];
+      if (n.op === op && last && last.op === op) {
+        out.pop();
+        const v = op === "TURN" ? mod360(last.v + n.v) : snap(last.v + n.v);
+        const before = irText(last) + "; " + irText(n);
+        changed = true;
+        if (op === "TURN" && v === 0) { log(passNo, "Turns cancel out", before, "(removed)", last.line); continue; }
+        const m = mk({ op, v, line: last.line }, [last.id, n.id]);
+        log(passNo, op === "TURN" ? "Consecutive turns combined" : "Consecutive moves combined", before, irText(m), last.line);
+        out.push(m);
+        continue;
+      }
+      out.push(n);
+    }
+    return { block: out, changed };
+  }
+
+  // Pass 5: loop optimizations (no general unrolling)
+  function p5(block) {
+    let changed = false; const out = [];
+    for (const orig of block) {
+      if (orig.op !== "LOOP") { out.push(orig); continue; }
+      const r = p5(orig.body);
+      changed = changed || r.changed;
+      const n = Object.assign({}, orig, { body: r.block });
+      if (n.body.length === 0) { log(5, "Empty loop removed", irText(n), "(removed)", n.line); changed = true; continue; }
+      if (n.count === 1) { log(5, "Single-pass loop unwrapped", irText(n), n.body.map(irText).join("; "), n.line); changed = true; out.push(...n.body); continue; }
+      if (n.body.length === 1) {
+        const b = n.body[0];
+        if (b.op === "LOOP") {
+          const m = mk({ op: "LOOP", count: n.count * b.count, body: b.body, line: n.line, endLine: n.endLine }, [n.id, b.id]);
+          m.endId = ctx.next++;
+          log(5, "Nested loops flattened", irText(n), irText(m), n.line); changed = true; out.push(m); continue;
+        }
+        if (b.op === "TURN") {
+          const v = mod360(n.count * b.v);
+          changed = true;
+          if (v === 0) { log(5, "Loop of turns makes full circles", irText(n), "(removed)", n.line); continue; }
+          const m = mk({ op: "TURN", v, line: n.line }, [n.id, b.id]);
+          log(5, "Loop of one TURN collapsed", irText(n), irText(m), n.line); out.push(m); continue;
+        }
+        if (b.op === "MOVE") {
+          const m = mk({ op: "MOVE", v: snap(n.count * b.v), line: n.line }, [n.id, b.id]);
+          log(5, "Loop of one MOVE collapsed", irText(n), irText(m), n.line); changed = true; out.push(m); continue;
+        }
+        if (["SET_PEN", "PEN_UP", "PEN_DOWN", "CLEAR"].includes(b.op)) {
+          log(5, "Repeating a state change once is enough", irText(n), irText(b), n.line); changed = true; out.push(b); continue;
+        }
+      }
+      out.push(n);
+    }
+    return { block: out, changed };
+  }
+
+  // Pass 6: a pen setting overwritten before it can affect any drawing is dead
+  function p6(block) {
+    let changed = false; const out = [];
+    for (let i = 0; i < block.length; i++) {
+      const n = block[i];
+      if (n.op === "LOOP") { const r = p6(n.body); changed = changed || r.changed; out.push(Object.assign({}, n, { body: r.block })); continue; }
+      if (n.op === "SET_PEN" || n.op === "PEN_UP" || n.op === "PEN_DOWN") {
+        const isColor = n.op === "SET_PEN";
+        const passThrough = isColor ? ["TURN", "PEN_UP", "PEN_DOWN"] : ["TURN", "SET_PEN"];
+        const same = isColor ? ["SET_PEN"] : ["PEN_UP", "PEN_DOWN"];
+        let j = i + 1;
+        while (j < block.length && passThrough.includes(block[j].op)) j++;
+        if (j < block.length && same.includes(block[j].op)) {
+          log(6, "Overwritten before use", irText(n), "(removed, replaced by " + irText(block[j]) + ")", n.line);
+          changed = true; continue;
+        }
+      }
+      out.push(n);
+    }
+    return { block: out, changed };
+  }
+
+  let tree = clone(irTree);
+  let rounds = 0, changed = true;
+  while (changed && rounds < LIMITS.maxPasses) {
+    rounds++; changed = false;
+    let r;
+    r = p1(tree); tree = r.block; changed = changed || r.changed;
+    r = p2(tree, { color: COLORS.BLACK, pen: "down" }); tree = r.block; changed = changed || r.changed;
+    r = combine(tree, "TURN", 3); tree = r.block; changed = changed || r.changed;
+    r = combine(tree, "MOVE", 4); tree = r.block; changed = changed || r.changed;
+    r = p5(tree); tree = r.block; changed = changed || r.changed;
+    r = p6(tree); tree = r.block; changed = changed || r.changed;
+  }
+  return { tree, log: ctx.log, rounds, next: ctx.next };
+}
+
+/* ======================= PHASE 6: TARGET CODE + EXECUTION ======================= */
+function codegen(tree) {
+  const out = [];
+  (function emit(b) {
+    for (const n of b) {
+      if (n.op === "LOOP") { for (let k = 0; k < n.count; k++) { emit(n.body); if (out.length > LIMITS.maxOps * 4) throw new Error("operation limit"); } continue; }
+      const t = { irId: n.id, line: n.line };
+      if (n.op === "SET_PEN") Object.assign(t, { op: "SET_COLOR", color: n.color });
+      else if (n.op === "MOVE") Object.assign(t, { op: "FORWARD", v: n.v });
+      else if (n.op === "TURN") Object.assign(t, { op: "ROTATE_CW", v: n.v });
+      else if (n.op === "PEN_UP") t.op = "LIFT_PEN";
+      else if (n.op === "PEN_DOWN") t.op = "LOWER_PEN";
+      else if (n.op === "CLEAR") t.op = "CLEAR_CANVAS";
+      out.push(t);
+    }
+  })(tree);
+  return out;
+}
+function targetText(t) {
+  if (t.op === "SET_COLOR") return "SET_COLOR " + t.color;
+  if (t.op === "FORWARD" || t.op === "ROTATE_CW") return t.op + " " + fmt(t.v);
+  return t.op;
+}
+
+function execute(cmds) {
+  const s = { x: LIMITS.canvasW / 2, y: LIMITS.canvasH / 2, h: 0, color: COLORS.BLACK, pen: true };
+  const initial = Object.assign({}, s);
+  const steps = [], paths = [], clears = [];
+  let minX = s.x, maxX = s.x, minY = s.y, maxY = s.y;
+  for (let i = 0; i < cmds.length; i++) {
+    if (i >= LIMITS.maxOps * 4) throw new Error("operation limit");
+    const c = cmds[i];
+    const before = Object.assign({}, s);
+    let pathIndex = null;
+    switch (c.op) {
+      case "SET_COLOR": s.color = c.color; break;
+      case "LIFT_PEN": s.pen = false; break;
+      case "LOWER_PEN": s.pen = true; break;
+      case "CLEAR_CANVAS": clears.push(i); break;
+      case "ROTATE_CW": s.h = mod360(s.h + c.v); break;
+      case "FORWARD": {
+        const rad = (s.h * Math.PI) / 180;
+        const nx = snap(s.x + c.v * snap(Math.cos(rad)));
+        const ny = snap(s.y + c.v * snap(Math.sin(rad)));
+        if (s.pen && c.v > 0) { pathIndex = paths.length; paths.push({ x1: s.x, y1: s.y, x2: nx, y2: ny, color: s.color, step: i }); }
+        s.x = nx; s.y = ny;
+        minX = Math.min(minX, nx); maxX = Math.max(maxX, nx); minY = Math.min(minY, ny); maxY = Math.max(maxY, ny);
+        break;
+      }
+    }
+    steps.push({ cmd: c, before, after: Object.assign({}, s), pathIndex });
+  }
+  const outOfBounds = minX < -1e-6 || minY < -1e-6 || maxX > LIMITS.canvasW + 1e-6 || maxY > LIMITS.canvasH + 1e-6;
+  return { steps, paths, clears, initial, final: Object.assign({}, s), bounds: { minX, maxX, minY, maxY }, outOfBounds };
+}
+
+/* Equivalence check used to prove the optimizer is correct */
+function visibleMerged(run) {
+  const lastClear = run.clears.length ? run.clears[run.clears.length - 1] : -1;
+  const segs = run.paths.filter((p) => p.step > lastClear);
+  const out = [];
+  for (const s of segs) {
+    const last = out[out.length - 1];
+    if (last && last.color === s.color && near(last.x2, s.x1) && near(last.y2, s.y1)) {
+      const ax = last.x2 - last.x1, ay = last.y2 - last.y1, bx = s.x2 - s.x1, by = s.y2 - s.y1;
+      const cross = ax * by - ay * bx, dot = ax * bx + ay * by;
+      if (Math.abs(cross) < 1e-6 * Math.hypot(ax, ay) * Math.hypot(bx, by) + 1e-9 && dot > 0) { last.x2 = s.x2; last.y2 = s.y2; continue; }
+    }
+    out.push({ x1: s.x1, y1: s.y1, x2: s.x2, y2: s.y2, color: s.color });
+  }
+  return out;
+}
+function near(a, b) { return Math.abs(a - b) < 1e-6; }
+function equivalent(runA, runB) {
+  const a = runA.final, b = runB.final;
+  const headingDiff = Math.abs(mod360(a.h - b.h));
+  if (!near(a.x, b.x) || !near(a.y, b.y) || (headingDiff > 1e-6 && Math.abs(headingDiff - 360) > 1e-6) || a.color !== b.color || a.pen !== b.pen)
+    return { ok: false, reason: "final turtle state differs" };
+  const sa = visibleMerged(runA), sb = visibleMerged(runB);
+  if (sa.length !== sb.length) return { ok: false, reason: "different number of visible lines (" + sa.length + " vs " + sb.length + ")" };
+  for (let i = 0; i < sa.length; i++) {
+    const p = sa[i], q = sb[i];
+    if (!near(p.x1, q.x1) || !near(p.y1, q.y1) || !near(p.x2, q.x2) || !near(p.y2, q.y2) || p.color !== q.color)
+      return { ok: false, reason: "line " + (i + 1) + " differs" };
+  }
+  return { ok: true, lines: sa.length };
+}
+
+/* ======================= COMPILER DRIVER ======================= */
+function compile(src) {
+  const t0 = (typeof performance !== "undefined" ? performance : Date).now();
+  const res = { phases: {}, diagnostics: [], ok: false };
+  const order = PHASES.map((p) => p.key);
+  const set = (k, status, out) => { res.phases[k] = { status, out }; };
+  const fail = (k, d) => {
+    res.diagnostics.push(d); set(k, "fail");
+    order.slice(order.indexOf(k) + 1).forEach((key) => set(key, "skip"));
+    res.failedPhase = k;
+  };
+  const guard = (k, fn) => {
+    try { return fn(); }
+    catch (e) {
+      if (e && e.isDiag) { fail(k, e); return null; }
+      fail(k, { isDiag: true, code: "X000", phase: "Internal", severity: "error", title: "Internal compiler error", message: String(e && e.message || e), line: 1, col: 1, fix: "Simplify the program. This is a bug in the visualiser." });
+      return null;
+    }
+  };
+  const done = () => { res.ms = ((typeof performance !== "undefined" ? performance : Date).now() - t0); return res; };
+
+  const tokens = guard("lex", () => lex(src)); if (!tokens) return done();
+  set("lex", "ok", tokens);
+  const ast = guard("parse", () => parse(tokens)); if (!ast) return done();
+  set("parse", "ok", ast);
+
+  const sem = analyze(ast);
+  res.diagnostics.push(...sem.errors, ...sem.warnings);
+  if (sem.errors.length) {
+    set("sem", "fail", sem); res.failedPhase = "sem";
+    ["ir", "opt", "target"].forEach((k) => set(k, "skip"));
+    return done();
+  }
+  set("sem", sem.warnings.length ? "warn" : "ok", sem);
+
+  const ir = genIR(ast);
+  set("ir", "ok", ir);
+
+  const opt = guard("opt", () => {
+    const o = optimize(ir.tree, ir.next);
+    const runOrig = execute(codegen(ir.tree));
+    const runOpt = execute(codegen(o.tree));
+    o.check = equivalent(runOrig, runOpt);
+    o.before = { instr: irCount(ir.tree), dyn: dynCount(ir.tree) };
+    o.after = { instr: irCount(o.tree), dyn: dynCount(o.tree) };
+    return o;
+  });
+  if (!opt) return done();
+  set("opt", opt.check.ok ? "ok" : "fail", opt);
+  if (!opt.check.ok) {
+    res.diagnostics.push({ isDiag: true, code: "X001", phase: "Optimization", severity: "error", title: "Optimization changed the drawing", message: opt.check.reason, line: 1, col: 1, fix: "This is an optimizer bug. Compile without the optimizer." });
+    set("target", "skip"); res.failedPhase = "opt"; return done();
+  }
+
+  const target = guard("target", () => {
+    const code = codegen(opt.tree);
+    const run = execute(code);
+    return { code, run };
+  });
+  if (!target) return done();
+  if (target.run.outOfBounds) {
+    const b = target.run.bounds;
+    res.diagnostics.push(diag("W010", 1, 1, "The turtle reaches x " + fmt(b.minX) + " to " + fmt(b.maxX) + ", y " + fmt(b.minY) + " to " + fmt(b.maxY) + "; the sheet is 0 to " + LIMITS.canvasW + " by 0 to " + LIMITS.canvasH + "."));
+  }
+  set("target", target.run.outOfBounds ? "warn" : "ok", target);
+  res.ok = true;
+  return done();
+}
+</script>
+
+<script>
+/* =====================================================================
+   USER INTERFACE
+   ===================================================================== */
+const SAMPLES = {
+  "Square": "// Program 1: square\nPEN BLUE;\nREPEAT 4 {\n  MOVE 100;\n  TURN 90;\n}\n",
+  "Triangle": "// Program 2: triangle\nPEN RED;\nREPEAT 3 {\n  MOVE 120;\n  TURN 120;\n}\n",
+  "Hexagon": "// Program 3: hexagon\nPEN GREEN;\nREPEAT 6 {\n  MOVE 80;\n  TURN 60;\n}\n",
+  "Star": "// Program 4: five-pointed star\nPEN PURPLE;\nREPEAT 5 {\n  MOVE 150;\n  TURN 144;\n}\n",
+  "Nested pattern": "// Program 5: six squares, each turned 60 degrees\nPEN BLUE;\nREPEAT 6 {\n  REPEAT 4 {\n    MOVE 50;\n    TURN 90;\n  }\n  TURN 60;\n}\n",
+  "Multicolor": "// Program 6: two shapes in two colors\nPEN RED;\nREPEAT 4 {\n  MOVE 80;\n  TURN 90;\n}\nPEN BLUE;\nREPEAT 3 {\n  MOVE 100;\n  TURN 120;\n}\n",
+  "Pen up": "// Program 7: draw, lift the pen, move away\nPEN RED;\nREPEAT 4 {\n  MOVE 50;\n  TURN 90;\n}\nPENUP;\nMOVE 150;\nPENDOWN;\n",
+  "Flower": "// 36 squares, each turned 10 degrees\nPEN MAGENTA;\nREPEAT 36 {\n  REPEAT 4 {\n    MOVE 100;\n    TURN 90;\n  }\n  TURN 10;\n}\n",
+  "Optimizer demo": "// Every optimization pass has something to do here\nPEN BLACK;        // already the starting color\nPEN RED;\nPEN RED;          // same color again\nMOVE 0;           // does nothing\nTURN 30;\nTURN 60;          // combined with the turn above\nMOVE 40;\nMOVE 60;          // combined with the move above\nREPEAT 1 {        // runs once, so the loop is removed\n  TURN 90;\n}\nREPEAT 3 {        // outer loop holds only the inner loop\n  REPEAT 4 {\n    MOVE 30;\n    TURN 90;\n  }\n}\nREPEAT 4 {        // four quarter turns = a full circle\n  TURN 90;\n}\nPENUP;\nPENDOWN;          // pen lifted and lowered with nothing between\nMOVE 50;\n",
+  "Error: distance": "// Program 8: expected semantic error\nMOVE 5000;\n",
+  "Error: color": "// Program 9: expected semantic error\nPEN INVISIBLE;\n",
+  "Error: repeat": "// Program 10: expected semantic error\nREPEAT 0 {\n  MOVE 100;\n}\n",
+  "Error: syntax": "// MOVE 100 is missing its semicolon\nPEN BLUE;\nREPEAT 4 {\n  MOVE 100\n  TURN 90;\n}\n",
+  "Error: lexical": "// & is not a TGL character\nPEN BLUE;\nMOVE 100 & 50;\n"
+};
+const DEFAULT_SAMPLE = "Nested pattern";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+};
+
+const src = $("src"), hl = $("hl"), gutter = $("gutter");
+let result = null;
+let activeTab = store.get("tgl.tab") || "lex";
+let currentLine = null;
+
+/* ---------------- editor ---------------- */
+const KW_RE = new RegExp("^(" + KEYWORDS.join("|") + ")$", "i");
+function highlightLine(text) {
+  const re = /(\/\/.*$)|(#[0-9A-Fa-f]{6}\b)|(-?\d+(?:\.\d+)?)|([A-Za-z_][A-Za-z0-9_]*)|([{};,])|([^\s])|(\s+)/g;
+  let out = "", m;
+  while ((m = re.exec(text))) {
+    if (m[1]) out += '<span class="cm">' + esc(m[1]) + "</span>";
+    else if (m[2]) out += '<span class="c">' + esc(m[2]) + "</span>";
+    else if (m[3]) out += '<span class="n">' + esc(m[3]) + "</span>";
+    else if (m[4]) out += KW_RE.test(m[4]) ? '<span class="k">' + esc(m[4]) + "</span>" : (colorHex(m[4]) ? '<span class="c">' + esc(m[4]) + "</span>" : esc(m[4]));
+    else if (m[5]) out += '<span class="p">' + esc(m[5]) + "</span>";
+    else out += esc(m[0]);
+  }
+  return out;
+}
+function renderEditor() {
+  const lines = src.value.split("\n");
+  const bad = new Set(), warn = new Set();
+  if (result) for (const d of result.diagnostics) (d.severity === "error" ? bad : warn).add(d.line);
+  hl.innerHTML = lines.map((l, i) => {
+    const n = i + 1;
+    const cls = n === currentLine ? "cur" : bad.has(n) ? "bad" : warn.has(n) && n !== 1 ? "warn" : "";
+    return '<div class="l ' + cls + '">' + (highlightLine(l) || " ") + "</div>";
+  }).join("");
+  gutter.innerHTML = lines.map((_, i) => '<div class="' + (bad.has(i + 1) ? "bad" : "") + '">' + (i + 1) + "</div>").join("");
+  syncScroll();
+}
+function syncScroll() {
+  hl.scrollTop = src.scrollTop; hl.scrollLeft = src.scrollLeft;
+  gutter.scrollTop = src.scrollTop;
+}
+src.addEventListener("scroll", syncScroll);
+src.addEventListener("keydown", (e) => {
+  if (e.key === "Tab") {
+    e.preventDefault();
+    const s = src.selectionStart, en = src.selectionEnd;
+    src.value = src.value.slice(0, s) + "  " + src.value.slice(en);
+    src.selectionStart = src.selectionEnd = s + 2;
+    onEdit();
+  }
+});
+let editTimer = null;
+function onEdit() {
+  store.set("tgl.src", src.value);
+  renderEditor();
+  clearTimeout(editTimer);
+  editTimer = setTimeout(runCompile, 350);
+}
+src.addEventListener("input", onEdit);
+function goToLine(line, col) {
+  const lines = src.value.split("\n");
+  let off = 0;
+  for (let i = 0; i < line - 1 && i < lines.length; i++) off += lines[i].length + 1;
+  off += Math.max(0, (col || 1) - 1);
+  src.focus();
+  src.setSelectionRange(off, off);
+  const top = (line - 1) * 21 - src.clientHeight / 2;
+  src.scrollTop = Math.max(0, top);
+  syncScroll();
+}
+
+/* ---------------- samples ---------------- */
+const sampleSel = $("sample");
+sampleSel.innerHTML = Object.keys(SAMPLES).map((k) => "<option>" + esc(k) + "</option>").join("") + '<option value="__custom">My program</option>';
+sampleSel.addEventListener("change", () => {
+  if (sampleSel.value === "__custom") return;
+  src.value = SAMPLES[sampleSel.value];
+  store.set("tgl.sample", sampleSel.value);
+  onEdit(); runCompile();
+});
+$("reset").addEventListener("click", () => {
+  const k = SAMPLES[sampleSel.value] ? sampleSel.value : DEFAULT_SAMPLE;
+  sampleSel.value = k; src.value = SAMPLES[k]; onEdit(); runCompile();
+});
+$("compile").addEventListener("click", runCompile);
+
+/* ---------------- compile + render all panels ---------------- */
+function runCompile() {
+  clearTimeout(editTimer);
+  stopPlay();
+  result = compile(src.value);
+  if (Object.values(SAMPLES).indexOf(src.value) === -1) sampleSel.value = "__custom";
+  renderPipeline();
+  renderDiagnostics();
+  renderTabs();
+  loadDrawing();
+  renderEditor();
+}
+
+function renderPipeline() {
+  const label = { ok: "Success", warn: "Warnings", fail: "Failed", skip: "Skipped" };
+  $("pipeline").innerHTML = PHASES.map((p, i) => {
+    const st = result.phases[p.key] ? result.phases[p.key].status : "skip";
+    const s = p.key === "sem" && st === "ok" && result.diagnostics.some((d) => d.severity === "warning" && d.phase === "Semantic") ? "warn" : st;
+    return '<button type="button" class="stage" data-s="' + s + '" data-tab="' + p.key + '"><span class="no">Phase ' + (i + 1) + '</span><span class="nm">' + p.name + '</span><span class="st">' + label[s] + "</span></button>";
+  }).join("");
+  $("pipeline").querySelectorAll(".stage").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.tab)));
+  $("ptime").textContent = result.ms !== undefined ? "compiled in " + result.ms.toFixed(1) + " ms" : "";
+}
+
+function renderDiagnostics() {
+  const ds = result.diagnostics.slice().sort((a, b) => (a.severity === b.severity ? a.line - b.line : a.severity === "error" ? -1 : 1));
+  const errs = ds.filter((d) => d.severity === "error").length, warns = ds.length - errs;
+  $("dcount").textContent = errs + " error" + (errs === 1 ? "" : "s") + " · " + warns + " warning" + (warns === 1 ? "" : "s");
+  if (!ds.length) {
+    $("diags").innerHTML = '<div class="okline"><span class="pill ok">OK</span>No errors or warnings. All six phases completed.</div>';
+    return;
+  }
+  $("diags").innerHTML = '<ul class="diags">' + ds.map((d, i) =>
+    '<li class="diag" data-i="' + i + '" tabindex="0">' +
+      '<span class="pill ' + d.severity + '">' + d.code + "</span>" +
+      '<span class="msg">' + esc(d.message) + "</span>" +
+      '<span class="meta">' + esc(d.phase) + " · " + esc(d.title) + " · line " + d.line + ", column " + d.col + "</span>" +
+      '<span class="fix"><b>Fix:</b> ' + esc(d.fix) + "</span>" +
+    "</li>").join("") + "</ul>";
+  $("diags").querySelectorAll(".diag").forEach((el) => {
+    const d = ds[+el.dataset.i];
+    const go = () => goToLine(d.line, d.col);
+    el.addEventListener("click", go);
+    el.addEventListener("keydown", (e) => { if (e.key === "Enter") go(); });
+  });
+}
+
+/* ---------------- inspector tabs ---------------- */
+const TABS = [
+  { key: "lex", label: "Tokens", ph: "1" },
+  { key: "parse", label: "Syntax tree", ph: "2" },
+  { key: "sem", label: "Semantic", ph: "3" },
+  { key: "ir", label: "Intermediate code", ph: "4" },
+  { key: "opt", label: "Optimizer", ph: "5" },
+  { key: "target", label: "Target code", ph: "6" }
+];
+function selectTab(k) { activeTab = k; store.set("tgl.tab", k); renderTabs(); }
+function tabCount(k) {
+  const ph = result && result.phases[k];
+  if (!ph || !ph.out) return "";
+  if (k === "lex") return ph.out.length - 1;
+  if (k === "parse") return result.phases.sem && result.phases.sem.out ? result.phases.sem.out.metrics.statements : "";
+  if (k === "sem") return result.phases.sem.out.errors.length + result.phases.sem.out.warnings.length || "";
+  if (k === "ir") return irCount(ph.out.tree);
+  if (k === "opt") return ph.out.log.length;
+  if (k === "target") return ph.out.code.length;
+  return "";
+}
+function renderTabs() {
+  $("tabs").innerHTML = TABS.map((t) => {
+    const c = tabCount(t.key);
+    return '<button type="button" role="tab" class="tab" aria-selected="' + (t.key === activeTab) + '" data-k="' + t.key + '"><span class="ph">' + t.ph + "</span>" + t.label + (c !== "" ? '<span class="cnt">' + c + "</span>" : "") + "</button>";
+  }).join("");
+  $("tabs").querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => selectTab(b.dataset.k)));
+  const ph = result.phases[activeTab];
+  const panel = $("tabpanel");
+  if (!ph || ph.status === "skip" || (ph.status === "fail" && !ph.out)) {
+    const failed = PHASES.find((p) => p.key === result.failedPhase);
+    panel.innerHTML = '<p class="empty-note">' + (ph && ph.status === "fail"
+      ? "This phase failed. See Diagnostics for the error and how to fix it."
+      : "Not produced. Compilation stopped at " + (failed ? failed.name.toLowerCase() : "an earlier phase") + ", and later phases never run on an invalid program.") + "</p>";
+    return;
+  }
+  panel.innerHTML = ({ lex: viewTokens, parse: viewAst, sem: viewSemantic, ir: viewIR, opt: viewOpt, target: viewTarget })[activeTab](ph.out);
+}
+
+function ttClass(type) {
+  if (KEYWORDS.includes(type)) return "kw";
+  if (type === "INTEGER" || type === "FLOAT") return "lit";
+  if (type === "IDENTIFIER" || type === "HEX_COLOR") return "id";
+  return "";
+}
+function viewTokens(tokens) {
+  return '<p class="intro">The lexer reads the source one character at a time and groups characters into tokens. Spaces and // comments are dropped. Each token keeps its exact position.</p>' +
+    '<div class="scroll-x scroll-y"><table><thead><tr><th>#</th><th>Type</th><th>Lexeme</th><th>Line</th><th>Column</th><th>Offset</th></tr></thead><tbody>' +
+    tokens.map((t, i) => "<tr><td class=\"num\">" + (i + 1) + '</td><td><span class="tt ' + ttClass(t.type) + '">' + t.type + '</span></td><td class="mono">' + (t.type === "EOF" ? '<span style="color:var(--muted)">end of input</span>' : esc(t.lexeme)) + '</td><td class="num">' + t.line + '</td><td class="num">' + t.col + '</td><td class="num mono">' + t.start + "–" + t.end + "</td></tr>").join("") +
+    "</tbody></table></div>";
+}
+
+function astNode(n) {
+  let kind = n.kind, det = "", kids = [];
+  switch (n.kind) {
+    case "Program": kind = "ProgramNode"; det = n.body.length + " statement" + (n.body.length === 1 ? "" : "s"); kids = n.body; break;
+    case "Pen": kind = "PenCommandNode"; kids = [n.color]; break;
+    case "Color": kind = "ColorNode"; det = n.name + (n.isHex ? " (hex)" : ""); break;
+    case "Move": kind = "MoveCommandNode"; kids = [n.arg]; break;
+    case "Turn": kind = "TurnCommandNode"; kids = [n.arg]; break;
+    case "Number": kind = "NumberNode"; det = n.lexeme + (n.isInteger ? " (integer)" : " (decimal)"); break;
+    case "Repeat": kind = "RepeatNode"; det = "count + " + n.body.length + " statement" + (n.body.length === 1 ? "" : "s"); kids = [n.count].concat(n.body); break;
+    case "PenUp": kind = "PenUpNode"; break;
+    case "PenDown": kind = "PenDownNode"; break;
+    case "Clear": kind = "ClearNode"; break;
+    case "Extension": kind = n.command + " (extension)"; kids = n.args; break;
+  }
+  const swatch = n.kind === "Color" && (n.isHex ? n.name : colorHex(n.name)) ? '<i class="swatch" style="background:' + esc(n.isHex ? n.name : colorHex(n.name)) + '"></i>' : "";
+  return '<li><span class="node"><span class="kind">' + esc(kind) + '</span><span class="det">' + swatch + esc(det) + '</span><span class="pos">line ' + n.line + ", col " + n.col + "</span></span>" +
+    (kids.length ? "<ul>" + kids.map(astNode).join("") + "</ul>" : "") + "</li>";
+}
+function viewAst(ast) {
+  return '<p class="intro">The recursive descent parser checks the token order against the grammar and builds this Abstract Syntax Tree. REPEAT nodes hold their body as children.</p>' +
+    '<div class="scroll-x scroll-y"><ul class="tree">' + astNode(ast) + "</ul></div>";
+}
+
+function viewSemantic(sem) {
+  const m = sem.metrics;
+  const pct = Math.min(100, (m.ops / LIMITS.maxOps) * 100);
+  const metrics =
+    '<div class="metric-row">' +
+      metric(m.statements, "statements") + metric(m.maxDepth + " / " + LIMITS.maxDepth, "deepest REPEAT nesting") +
+      '<div class="metric"><div class="v">' + m.ops.toLocaleString("en-US") + '</div><div class="l">operations of ' + LIMITS.maxOps.toLocaleString("en-US") + ' allowed</div><div class="bar' + (m.ops > LIMITS.maxOps ? " over" : "") + '"><i style="width:' + pct + '%"></i></div></div>' +
+      metric(Object.keys(sem.colorsUsed).length, "colors used") +
+    "</div>";
+  const rules = '<h3 class="subhead">Rules checked</h3><div class="scroll-x"><table><thead><tr><th>Rule</th><th>Check</th><th>Result</th><th>Detail</th></tr></thead><tbody>' +
+    sem.rules.map((r) => '<tr><td class="mono">' + r.id + "</td><td>" + esc(r.text) + '</td><td><span class="rule-st ' + r.status + '">' + ({ pass: "PASS", fail: "FAIL", na: "N/A" })[r.status] + '</span></td><td style="color:var(--muted)">' + esc(r.note) + "</td></tr>").join("") +
+    "</tbody></table></div>";
+  const cmds = Object.keys(sem.usage);
+  const sym = '<h3 class="subhead">Symbol table: commands used</h3><div class="scroll-x"><table><thead><tr><th>Command</th><th>Arguments</th><th>Written</th><th>Executed</th><th>Lines</th></tr></thead><tbody>' +
+    cmds.map((c) => { const u = sem.usage[c]; return '<tr><td><span class="tt kw">' + c + "</span></td><td>" + esc(SIGNATURES[c].args) + '</td><td class="num">' + u.count + '</td><td class="num">' + u.executions.toLocaleString("en-US") + '</td><td class="mono" style="color:var(--muted)">' + u.lines.join(", ") + (u.count > u.lines.length ? ", …" : "") + "</td></tr>"; }).join("") +
+    "</tbody></table></div>";
+  const colors = Object.keys(sem.colorsUsed);
+  const col = '<h3 class="subhead" style="margin-top:16px">Symbol table: colors used</h3>' + (colors.length
+    ? '<div class="colors">' + colors.map((h) => '<div class="color-chip"><i style="background:' + esc(h) + '"></i><div><div>' + esc(sem.colorsUsed[h].name) + '</div><div class="mono">' + esc(h) + " · used " + sem.colorsUsed[h].count + "×</div></div></div>").join("") + "</div>"
+    : '<p class="empty-note" style="padding:0">No PEN command. The turtle draws in the default color, BLACK.</p>');
+  return '<p class="intro">The program has the right shape. This phase checks that it is allowed: supported commands, values inside the limits, real colors, valid loop counts, and a bounded amount of work.</p>' +
+    metrics + '<div class="cols"><div>' + rules + "</div><div>" + sym + col + "</div></div>";
+}
+function metric(v, l) { return '<div class="metric"><div class="v">' + v + '</div><div class="l">' + l + "</div></div>"; }
+
+function irRows(tree) {
+  return '<div class="ir">' + irListing(tree).map((r) =>
+    '<div class="row' + (r.isNew ? " new" : "") + '"><span class="id">#' + r.id + '</span><span>' + "&nbsp;&nbsp;".repeat(r.depth * 2) + '<span class="op' + (r.loop ? " loop" : "") + '">' + r.op + "</span> " + esc(r.arg) + '</span><span class="src">line ' + r.line + "</span></div>").join("") +
+    (tree.length === 0 ? '<div class="row"><span></span><span style="color:var(--muted)">(empty program)</span><span></span></div>' : "") + "</div>";
+}
+function viewIR(ir) {
+  return '<p class="intro">The validated tree becomes a linear list of simple instructions. Loops are kept as LOOP_BEGIN / LOOP_END pairs instead of being copied out, so the code stays small. Each instruction has an id and the source line it came from.</p>' +
+    '<div class="metric-row">' + metric(irCount(ir.tree), "instructions") + metric(dynCount(ir.tree).toLocaleString("en-US"), "operations when executed") + "</div>" +
+    '<div class="scroll-x scroll-y">' + irRows(ir.tree) + "</div>";
+}
+function viewOpt(o) {
+  const irTree = result.phases.ir.out.tree;
+  const saved = o.before.instr - o.after.instr;
+  const badge = o.check.ok
+    ? '<span class="verified ok">✓ Verified: same drawing and same final turtle state</span>'
+    : '<span class="verified bad">✗ ' + esc(o.check.reason) + "</span>";
+  const passNames = { 1: "No-op elimination", 2: "Redundant pen state", 3: "Turn combination", 4: "Move combination", 5: "Loop optimization", 6: "Dead instruction" };
+  const log = o.log.length
+    ? '<div class="scroll-x"><table><thead><tr><th>Pass</th><th>Rule applied</th><th>Before</th><th>After</th><th>Line</th></tr></thead><tbody>' +
+      o.log.map((e) => '<tr><td><span class="tt">' + e.pass + "</span> " + passNames[e.pass] + "</td><td>" + esc(e.rule) + '</td><td class="mono">' + esc(e.before) + '</td><td class="mono">' + esc(e.after) + '</td><td class="num">' + e.line + "</td></tr>").join("") + "</tbody></table></div>"
+    : '<p class="empty-note" style="padding:0">No pass found anything to improve. The intermediate code is already minimal.</p>';
+  return '<p class="intro">Six passes run repeatedly until nothing changes (at most ' + LIMITS.maxPasses + ' rounds). Afterwards the original and optimized code are both executed and compared, so every change is checked, not assumed.</p>' +
+    '<div class="metric-row">' +
+      metric(o.before.instr + " → " + o.after.instr, "instructions" + (saved > 0 ? " (" + Math.round((saved / o.before.instr) * 100) + "% fewer)" : "")) +
+      metric(o.before.dyn.toLocaleString("en-US") + " → " + o.after.dyn.toLocaleString("en-US"), "operations when executed") +
+      metric(o.rounds, "rounds until stable") +
+    "</div><p style=\"margin:0 0 14px\">" + badge + "</p>" +
+    '<h3 class="subhead">Changes made</h3>' + log +
+    '<div class="diff-grid" style="margin-top:16px"><div><h3 class="subhead">Before</h3><div class="scroll-x">' + irRows(irTree) + '</div></div><div><h3 class="subhead">After (new instructions highlighted)</h3><div class="scroll-x">' + irRows(o.tree) + "</div></div></div>";
+}
+function viewTarget(t) {
+  const run = t.run;
+  const max = 400;
+  const rows = run.steps.slice(0, max).map((s, i) =>
+    '<tr><td class="num">' + (i + 1) + '</td><td class="mono">' + esc(targetText(s.cmd)) + '</td><td class="num">' + s.cmd.line + '</td><td class="num mono">' + fmt(s.after.x) + ", " + fmt(s.after.y) + '</td><td class="num mono">' + fmt(s.after.h) + '°</td><td>' + (s.after.pen ? "down" : "up") + '</td><td><i class="swatch" style="background:' + esc(s.after.color) + '"></i>' + esc(colorLabel(s.after.color)) + "</td></tr>").join("");
+  return '<p class="intro">The optimized code is turned into a flat list of drawing instructions (loops are expanded only here) and run on the turtle. The sheet on the right is drawn from exactly these instructions.</p>' +
+    '<div class="metric-row">' + metric(t.code.length.toLocaleString("en-US"), "drawing instructions") + metric(run.paths.length.toLocaleString("en-US"), "line segments") +
+      metric(fmt(run.final.x) + ", " + fmt(run.final.y), "final position") + metric(fmt(run.final.h) + "°", "final heading") + "</div>" +
+    '<div class="scroll-x scroll-y"><table><thead><tr><th>Step</th><th>Instruction</th><th>Line</th><th>Position after</th><th>Heading</th><th>Pen</th><th>Color</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+    (run.steps.length > max ? '<p class="empty-note" style="padding:8px 0 0">Showing the first ' + max + " of " + run.steps.length.toLocaleString("en-US") + " steps. Use the player under the sheet to step through all of them.</p>" : "");
+}
+
+/* ---------------- drawing sheet ---------------- */
+const canvas = $("sheet"), wrap = $("sheetWrap");
+const ctx2d = canvas.getContext("2d");
+let run = null, step = 0, view = { s: 1, ox: 0, oy: 0 }, playing = false, raf = null, lastT = 0, acc = 0;
+
+function loadDrawing() {
+  const t = result.phases.target;
+  if (t && t.out) {
+    run = t.out.run;
+    step = run.steps.length;
+    $("sheetFail").hidden = true;
+  } else {
+    run = null; step = 0;
+    const failed = PHASES.find((p) => p.key === result.failedPhase);
+    $("sheetFail").hidden = false;
+    $("sheetFail").textContent = "Nothing is drawn because compilation failed in " + (failed ? failed.name.toLowerCase() : "an earlier phase") + ". Invalid programs are never executed.";
+  }
+  $("pRange").max = run ? run.steps.length : 0;
+  fitSheet(false);
+  draw();
+}
+function resizeCanvas() {
+  const r = wrap.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  canvas.width = Math.max(1, Math.round(r.width * dpr)); canvas.height = Math.max(1, Math.round(r.height * dpr));
+}
+function fitBox(minX, minY, maxX, maxY) {
+  const r = wrap.getBoundingClientRect(), pad = 28;
+  const w = Math.max(maxX - minX, 1), h = Math.max(maxY - minY, 1);
+  const s = Math.min((r.width - pad * 2) / w, (r.height - pad * 2) / h);
+  view.s = Math.max(0.05, Math.min(s, 40));
+  view.ox = r.width / 2 - ((minX + maxX) / 2) * view.s;
+  view.oy = r.height / 2 - ((minY + maxY) / 2) * view.s;
+}
+function fitSheet(redraw = true) {
+  fitBox(0, 0, LIMITS.canvasW, LIMITS.canvasH);
+  if (run) {
+    const b = run.bounds, m = 60;
+    if (run.outOfBounds) fitDrawing(false);
+    else if (b.maxX - b.minX < LIMITS.canvasW * 0.35 && b.maxY - b.minY < LIMITS.canvasH * 0.35)
+      fitBox(Math.max(0, b.minX - m), Math.max(0, b.minY - m), Math.min(LIMITS.canvasW, b.maxX + m), Math.min(LIMITS.canvasH, b.maxY + m));
+  }
+  if (redraw) draw();
+}
+function fitDrawing(redraw = true) {
+  if (!run) return fitSheet(redraw);
+  const b = run.bounds;
+  fitBox(Math.min(b.minX, run.initial.x), Math.min(b.minY, run.initial.y), Math.max(b.maxX, run.initial.x), Math.max(b.maxY, run.initial.y));
+  if (redraw) draw();
+}
+const W = (x, y) => [x * view.s + view.ox, y * view.s + view.oy];
+
+function draw() {
+  resizeCanvas();
+  const dpr = window.devicePixelRatio || 1;
+  const r = wrap.getBoundingClientRect();
+  ctx2d.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx2d.fillStyle = "#f4f7f5"; ctx2d.fillRect(0, 0, r.width, r.height);
+  // sheet
+  const [sx, sy] = W(0, 0), [ex, ey] = W(LIMITS.canvasW, LIMITS.canvasH);
+  ctx2d.fillStyle = "#ffffff"; ctx2d.fillRect(sx, sy, ex - sx, ey - sy);
+  ctx2d.strokeStyle = "#e3e9e6"; ctx2d.lineWidth = 1;
+  ctx2d.beginPath();
+  for (let x = 0; x <= LIMITS.canvasW; x += 50) { const [a] = W(x, 0); ctx2d.moveTo(Math.round(a) + 0.5, sy); ctx2d.lineTo(Math.round(a) + 0.5, ey); }
+  for (let y = 0; y <= LIMITS.canvasH; y += 50) { const [, b] = W(0, y); ctx2d.moveTo(sx, Math.round(b) + 0.5); ctx2d.lineTo(ex, Math.round(b) + 0.5); }
+  ctx2d.stroke();
+  ctx2d.strokeStyle = "#b9c6c1"; ctx2d.strokeRect(sx + 0.5, sy + 0.5, ex - sx - 1, ey - sy - 1);
+  // axis labels
+  ctx2d.fillStyle = "#7d8b86"; ctx2d.font = "10px " + getComputedStyle(document.body).getPropertyValue("--font-mono");
+  if (view.s > 0.35) {
+    for (let x = 0; x <= LIMITS.canvasW; x += 100) { const [a] = W(x, 0); ctx2d.fillText(String(x), a + 3, sy - 4); }
+    for (let y = 100; y <= LIMITS.canvasH; y += 100) { const [, b] = W(0, y); ctx2d.fillText(String(y), sx - 24, b + 3); }
+  }
+  // start marker
+  const [cx, cy] = W(LIMITS.canvasW / 2, LIMITS.canvasH / 2);
+  ctx2d.strokeStyle = "#c3cec9"; ctx2d.beginPath(); ctx2d.moveTo(cx - 6, cy); ctx2d.lineTo(cx + 6, cy); ctx2d.moveTo(cx, cy - 6); ctx2d.lineTo(cx, cy + 6); ctx2d.stroke();
+
+  if (!run) { updateReadout(); return; }
+  // visible paths up to the current step, honoring CLEAR
+  let lastClear = -1;
+  for (const c of run.clears) if (c < step) lastClear = c;
+  ctx2d.lineCap = "round"; ctx2d.lineJoin = "round";
+  ctx2d.lineWidth = Math.max(1.5, Math.min(3, 2.2 * Math.sqrt(view.s)));
+  for (const p of run.paths) {
+    if (p.step >= step) break;
+    if (p.step <= lastClear) continue;
+    const [a, b] = W(p.x1, p.y1), [c, d] = W(p.x2, p.y2);
+    ctx2d.strokeStyle = p.color; ctx2d.beginPath(); ctx2d.moveTo(a, b); ctx2d.lineTo(c, d); ctx2d.stroke();
+  }
+  // turtle
+  const st = step === 0 ? run.initial : run.steps[step - 1].after;
+  const [tx, ty] = W(st.x, st.y);
+  const rad = (st.h * Math.PI) / 180, sz = 13;
+  const pt = (f, side) => [tx + Math.cos(rad) * f * sz - Math.sin(rad) * side * sz, ty + Math.sin(rad) * f * sz + Math.cos(rad) * side * sz];
+  ctx2d.beginPath();
+  const p1 = pt(1, 0), p2 = pt(-0.6, 0.6), p3 = pt(-0.3, 0), p4 = pt(-0.6, -0.6);
+  ctx2d.moveTo(...p1); ctx2d.lineTo(...p2); ctx2d.lineTo(...p3); ctx2d.lineTo(...p4); ctx2d.closePath();
+  ctx2d.fillStyle = st.pen ? "#0b7a62" : "#ffffff"; ctx2d.strokeStyle = "#0b7a62"; ctx2d.lineWidth = 2;
+  ctx2d.fill(); ctx2d.stroke();
+  ctx2d.beginPath(); ctx2d.arc(tx, ty, 3, 0, Math.PI * 2); ctx2d.fillStyle = st.color; ctx2d.fill();
+  updateReadout();
+}
+function updateReadout() {
+  $("pRange").value = step;
+  if (!run) { $("readout").innerHTML = "<span>No drawing</span>"; $("stepnow").textContent = ""; setCurrentLine(null); return; }
+  const st = step === 0 ? run.initial : run.steps[step - 1].after;
+  $("readout").innerHTML =
+    "<span>Step <b>" + step + " / " + run.steps.length + "</b></span>" +
+    "<span>x <b>" + fmt(st.x) + "</b></span><span>y <b>" + fmt(st.y) + "</b></span>" +
+    "<span>heading <b>" + fmt(st.h) + "°</b></span>" +
+    "<span>pen <b>" + (st.pen ? "down" : "up") + "</b></span>" +
+    '<span>color <b><i class="swatch" style="background:' + esc(st.color) + '"></i>' + esc(colorLabel(st.color)) + "</b></span>";
+  if (step === 0) { $("stepnow").innerHTML = "Start: turtle at the center, facing right, pen down, BLACK."; setCurrentLine(null); }
+  else {
+    const s = run.steps[step - 1];
+    $("stepnow").innerHTML = "Last executed: <b>" + esc(targetText(s.cmd)) + "</b> from line " + s.cmd.line + (step === run.steps.length ? " · end of program" : "");
+    setCurrentLine(step === run.steps.length && !playing ? null : s.cmd.line);
+  }
+}
+function setCurrentLine(l) { if (l !== currentLine) { currentLine = l; renderEditor(); } }
+
+/* zoom + pan */
+function zoomAt(f, px, py) {
+  const ns = Math.max(0.05, Math.min(view.s * f, 40));
+  view.ox = px - ((px - view.ox) * ns) / view.s; view.oy = py - ((py - view.oy) * ns) / view.s; view.s = ns; draw();
+}
+canvas.addEventListener("wheel", (e) => { e.preventDefault(); const r = canvas.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
+let drag = null;
+canvas.addEventListener("pointerdown", (e) => { drag = { x: e.clientX, y: e.clientY, ox: view.ox, oy: view.oy }; canvas.setPointerCapture(e.pointerId); canvas.classList.add("drag"); });
+canvas.addEventListener("pointermove", (e) => { if (!drag) return; view.ox = drag.ox + e.clientX - drag.x; view.oy = drag.oy + e.clientY - drag.y; draw(); });
+const endDrag = () => { drag = null; canvas.classList.remove("drag"); };
+canvas.addEventListener("pointerup", endDrag); canvas.addEventListener("pointercancel", endDrag);
+const center = () => { const r = wrap.getBoundingClientRect(); return [r.width / 2, r.height / 2]; };
+$("zin").addEventListener("click", () => zoomAt(1.25, ...center()));
+$("zout").addEventListener("click", () => zoomAt(1 / 1.25, ...center()));
+$("zfit").addEventListener("click", () => fitDrawing());
+$("zsheet").addEventListener("click", () => { fitBox(0, 0, LIMITS.canvasW, LIMITS.canvasH); draw(); });
+new ResizeObserver(() => { if (document.getElementById("view-visualiser").hidden) return; fitSheet(); }).observe(wrap);
+
+/* playback */
+function setStep(n) { if (!run) return; step = Math.max(0, Math.min(run.steps.length, n)); draw(); }
+function stopPlay() { playing = false; cancelAnimationFrame(raf); $("pPlay").textContent = "▶ Play"; }
+function tick(t) {
+  if (!playing) return;
+  const dt = (t - lastT) / 1000; lastT = t;
+  acc += dt * +$("pSpeed").value;
+  const n = Math.floor(acc);
+  if (n > 0) { acc -= n; step = Math.min(run.steps.length, step + n); draw(); }
+  if (step >= run.steps.length) { stopPlay(); updateReadout(); return; }
+  raf = requestAnimationFrame(tick);
+}
+$("pPlay").addEventListener("click", () => {
+  if (!run) return;
+  if (playing) { stopPlay(); updateReadout(); return; }
+  if (step >= run.steps.length) step = 0;
+  playing = true; acc = 0; lastT = performance.now(); $("pPlay").textContent = "⏸ Pause";
+  raf = requestAnimationFrame(tick);
+});
+$("pFirst").addEventListener("click", () => { stopPlay(); setStep(0); });
+$("pLast").addEventListener("click", () => { stopPlay(); setStep(Infinity); });
+$("pBack").addEventListener("click", () => { stopPlay(); setStep(step - 1); });
+$("pFwd").addEventListener("click", () => { stopPlay(); setStep(step + 1); });
+$("pRange").addEventListener("input", (e) => { stopPlay(); setStep(+e.target.value); });
+
+/* ---------------- reference (built from the same tables the compiler uses) ---------------- */
+function buildReference() {
+  const codeRows = (prefix) => Object.keys(CODES).filter((k) => k[0] === prefix).map((k) => {
+    const c = CODES[k];
+    return '<tr><td><span class="pill ' + c[1] + '">' + k + "</span></td><td>" + esc(c[2]) + "</td><td>" + esc(c[3]) + "</td></tr>";
+  }).join("");
+  const codeTable = (title, prefix) => "<h3>" + title + '</h3><div class="scroll-x"><table><thead><tr><th>Code</th><th>Meaning</th><th>How to fix</th></tr></thead><tbody>' + codeRows(prefix) + "</tbody></table></div>";
+
+  const sections = [
+    ["r-overview", "Overview", "What TGL is and how it is compiled",
+      "<p>TGL (Turtle Graphics Language) is a small language for drawing with a turtle: a pen that sits on a sheet of paper, faces a direction, and draws a line when it moves. A program is a list of commands. <code>REPEAT</code> runs a block of commands several times.</p>" +
+      '<pre class="block">PEN BLUE;\nREPEAT 4 {\n  MOVE 100;\n  TURN 90;\n}</pre>' +
+      "<p>This program draws a blue square. The visualiser compiles it through the six classic phases. A later phase runs only if every earlier phase succeeded, so a program with an error is never drawn.</p>" +
+      '<div class="flow">' + [
+        ["1", "Lexical analysis", "characters → tokens"], ["2", "Syntax analysis", "tokens → syntax tree"],
+        ["3", "Semantic analysis", "is it allowed? limits, colors"], ["4", "Intermediate code", "tree → IR with loops kept"],
+        ["5", "Optimization", "smaller IR, same drawing"], ["6", "Target code", "flat drawing instructions → sheet"]
+      ].map((b) => '<div class="box"><span class="no">Phase ' + b[0] + "</span><b>" + b[1] + "</b><span>" + b[2] + "</span></div>").join("") + "</div>"],
+
+    ["r-commands", "Commands", "Every statement in TGL v1",
+      '<div class="scroll-x"><table><thead><tr><th>Command</th><th>Arguments</th><th>What it does</th><th>Example</th></tr></thead><tbody>' +
+      [["PEN", "a color", "Sets the pen color. Pen up/down is unchanged."],
+       ["MOVE", "distance, " + LIMITS.minMove + " to " + LIMITS.maxMove, "Moves forward in the current heading. Draws a line if the pen is down."],
+       ["TURN", "angle, " + LIMITS.minTurn + " to " + LIMITS.maxTurn, "Turns clockwise by the angle, relative to the current heading."],
+       ["REPEAT", "count, whole number " + LIMITS.minRepeat + " to " + LIMITS.maxRepeat, "Runs the block in braces count times. Blocks can be nested up to " + LIMITS.maxDepth + " deep."],
+       ["PENUP", "none", "Lifts the pen. Later moves do not draw."],
+       ["PENDOWN", "none", "Lowers the pen. Later moves draw."],
+       ["CLEAR", "none", "Erases everything drawn so far. Position, heading, color and pen stay as they are."]]
+        .map((r) => '<tr><td><span class="tt kw">' + r[0] + "</span></td><td>" + r[1] + "</td><td>" + r[2] + '</td><td class="mono">' + esc(SIGNATURES[r[0]].example) + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      "<h3>Planned extensions (not enabled in v1)</h3><p><code>SETX x;</code> <code>SETY y;</code> <code>GOTO x, y;</code> <code>CIRCLE r;</code> <code>WAIT ms;</code> are recognized as keywords and parsed, then rejected by the semantic phase with code S001. Hex colors such as <code>PEN #1E90FF;</code> are already supported.</p>"],
+
+    ["r-turtle", "Turtle and coordinates", "Where the turtle starts and how it moves",
+      '<div class="scroll-x"><table><tbody>' +
+      [["Sheet", LIMITS.canvasW + " × " + LIMITS.canvasH + " units"], ["Origin", "(0, 0) at the top-left corner"], ["Axes", "x grows to the right, y grows downward (screen convention)"],
+       ["Start position", "(" + LIMITS.canvasW / 2 + ", " + LIMITS.canvasH / 2 + "), the center"], ["Start heading", "0°, facing right"], ["Start pen", "down, color BLACK"],
+       ["Heading 90°", "facing down"], ["TURN a", "heading = (heading + a) mod 360, which is clockwise on screen"],
+       ["Leaving the sheet", "allowed; the drawing is completed and warning W010 is shown"]]
+        .map((r) => '<tr><td style="width:180px;color:var(--muted)">' + r[0] + "</td><td>" + r[1] + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      "<h3>Movement formula</h3>" +
+      '<pre class="block">θ     = heading × π / 180\nx_new = x + distance × cos θ\ny_new = y + distance × sin θ      (no sign flip, because y grows downward)</pre>' +
+      "<p>Results within 0.000000001 of a whole number are rounded to it, so <code>cos 90°</code> is exactly 0 and a square closes exactly at its starting point.</p>"],
+
+    ["r-lexical", "Lexical rules", "How the lexer reads characters",
+      '<div class="scroll-x"><table><thead><tr><th>Item</th><th>Rule</th><th>Examples</th></tr></thead><tbody>' +
+      [["Keywords", "Command names, case-insensitive", "MOVE · move · Move"],
+       ["Identifier", "Letter or _ then letters, digits, _ ; at most " + LIMITS.maxTokenLength + " characters. Used for color names.", "BLUE · REPEATER"],
+       ["Integer", "Optional - directly before digits", "100 · -50 · 0"],
+       ["Decimal", "Digits, one point, digits", "12.5 · 0.25"],
+       ["Hex color", "# and exactly 6 hex digits", "#1E90FF"],
+       ["Symbols", "{ } ; ,", "REPEAT 4 { … }"],
+       ["Whitespace", "Spaces, tabs and new lines separate tokens", ""],
+       ["Comments", "// to the end of the line", "// draws a square"],
+       ["Not allowed", "/* */ comments, a lone / or -, any other symbol, non-ASCII characters", "& · @ · 1.2.3 · 12abc · .5"]]
+        .map((r) => "<tr><td>" + r[0] + "</td><td>" + esc(r[1]) + '</td><td class="mono">' + esc(r[2]) + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      "<p style=\"margin-top:10px\">Negative numbers are read by the lexer on purpose. <code>MOVE -50;</code> then reaches the semantic phase and gets a clear out-of-range error instead of a confusing syntax error.</p>"],
+
+    ["r-tokens", "Token types", "Everything the lexer can produce",
+      '<div class="scroll-x"><table><thead><tr><th>Token type</th><th>Category</th><th>Matches</th></tr></thead><tbody>' +
+      CORE_COMMANDS.map((k) => '<tr><td><span class="tt kw">' + k + '</span></td><td>Keyword</td><td class="mono">' + k + " (any case)</td></tr>").join("") +
+      EXT_COMMANDS.map((k) => '<tr><td><span class="tt kw">' + k + '</span></td><td>Keyword (extension)</td><td class="mono">' + k + "</td></tr>").join("") +
+      [["IDENTIFIER", "id", "Name", "BLUE, INVISIBLE, myName"], ["INTEGER", "lit", "Literal", "100, -50"], ["FLOAT", "lit", "Literal", "12.5"], ["HEX_COLOR", "id", "Literal", "#1E90FF"],
+       ["LBRACE", "", "Symbol", "{"], ["RBRACE", "", "Symbol", "}"], ["SEMICOLON", "", "Symbol", ";"], ["COMMA", "", "Symbol", ","], ["EOF", "", "Marker", "end of input"]]
+        .map((r) => '<tr><td><span class="tt ' + r[1] + '">' + r[0] + "</span></td><td>" + r[2] + '</td><td class="mono">' + esc(r[3]) + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      "<p style=\"margin-top:10px\">Every token records its type, its exact text (lexeme), line, column, and start and end offsets in the source.</p>"],
+
+    ["r-grammar", "Grammar (EBNF)", "The syntax the parser accepts",
+      '<pre class="block">program       ::= statement* EOF ;\n\nstatement     ::= pen_stmt | move_stmt | turn_stmt | repeat_stmt\n                | penup_stmt | pendown_stmt | clear_stmt ;\n\npen_stmt      ::= PEN color SEMICOLON ;\nmove_stmt     ::= MOVE number SEMICOLON ;\nturn_stmt     ::= TURN number SEMICOLON ;\nrepeat_stmt   ::= REPEAT number LBRACE statement* RBRACE ;\npenup_stmt    ::= PENUP SEMICOLON ;\npendown_stmt  ::= PENDOWN SEMICOLON ;\nclear_stmt    ::= CLEAR SEMICOLON ;\n\ncolor         ::= IDENTIFIER | HEX_COLOR ;\nnumber        ::= INTEGER | FLOAT ;</pre>' +
+      "<p>The parser is recursive descent: one function per rule. The first token of a statement decides which rule applies, so one token of lookahead is enough (LL(1)).</p>" +
+      "<p><code>REPEAT number</code> accepts decimals and <code>PEN IDENTIFIER</code> accepts any name on purpose. <code>REPEAT 1.5</code> and <code>PEN INVISIBLE</code> are then reported by the semantic phase, where the error message can say exactly what is wrong.</p>" +
+      "<h3>Syntax edge cases</h3>" +
+      '<div class="scroll-x"><table><thead><tr><th>Input</th><th>Result</th></tr></thead><tbody>' +
+      [["MOVE;", "P002 missing argument"], ["REPEAT { MOVE 100; }", "P002 REPEAT needs a count"], ["REPEAT 4 MOVE 100;", "P004 missing {"],
+       ["REPEAT 4 { MOVE 100; TURN 90; }}", "P005 unexpected }"], ["REPEAT 4 { MOVE 100;", "P006 block never closed"], ["MOVE 100 200;", "P007 too many arguments"],
+       ["PEN BLUE RED;", "P007 too many arguments"], ["MOVE 100  (no ;)", "P003 missing semicolon"], ["MOVEE 100;", "P001 unknown command, did you mean MOVE?"],
+       ["MOVE BLUE;", "P008 expects a number"], ["REPEAT 3 { }", "valid syntax; warning W004 empty block"]]
+        .map((r) => '<tr><td class="mono">' + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td></tr>").join("") + "</tbody></table></div>"],
+
+    ["r-semantic", "Semantic rules and limits", "What makes a well-formed program allowed",
+      '<div class="scroll-x"><table><thead><tr><th>Rule</th><th>Check</th><th>Error code</th></tr></thead><tbody>' +
+      RULES.map((r) => '<tr><td class="mono">' + r[0] + "</td><td>" + esc(r[1]) + '</td><td class="mono">' + (r[3] === "grammar" ? '<span style="color:var(--muted)">guaranteed by grammar</span>' : r[2].filter((c) => c[0] === "S").join(", ") || '<span style="color:var(--muted)">via the rules above</span>') + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      "<h3>Limits</h3>" +
+      '<div class="scroll-x"><table><tbody>' +
+      [["MOVE distance", LIMITS.minMove + " to " + LIMITS.maxMove], ["TURN angle", LIMITS.minTurn + " to " + LIMITS.maxTurn + " degrees"], ["REPEAT count", "whole number " + LIMITS.minRepeat + " to " + LIMITS.maxRepeat],
+       ["REPEAT nesting", "at most " + LIMITS.maxDepth + " levels"], ["Executed operations", "at most " + LIMITS.maxOps.toLocaleString("en-US")], ["Token length", "at most " + LIMITS.maxTokenLength + " characters"],
+       ["Program size", "at most " + LIMITS.maxSourceLength.toLocaleString("en-US") + " characters"], ["Optimizer rounds", "at most " + LIMITS.maxPasses]]
+        .map((r) => '<tr><td style="width:200px;color:var(--muted)">' + r[0] + '</td><td class="num">' + r[1] + "</td></tr>").join("") +
+      "</tbody></table></div>" +
+      "<h3>Counting operations before running</h3>" +
+      "<p>TGL has only counted loops, so the exact number of operations is known before anything runs. Each simple command counts 1, and <code>REPEAT n { body }</code> counts n × (operations in the body). If the total is over the limit, the program is rejected with S012 and never executed.</p>" +
+      '<pre class="block">REPEAT 100 { REPEAT 100 { MOVE 1; TURN 1; } }   →   100 × 100 × 2 = 20,000   →   S012</pre>' +
+      "<p>Errors stop compilation. Warnings (codes starting with W) are shown, but the program still compiles and draws.</p>"],
+
+    ["r-colors", "Colors", "Named colors accepted by PEN",
+      '<div class="colors">' + Object.keys(COLORS).map((k) => '<div class="color-chip"><i style="background:' + COLORS[k] + '"></i><div><div>' + k + '</div><div class="mono">' + COLORS[k] + "</div></div></div>").join("") + "</div>" +
+      "<p style=\"margin-top:10px\">Names are case-insensitive and <code>GREY</code> is accepted as <code>GRAY</code>. Any other name, such as <code>INVISIBLE</code>, is error S006. Hex colors (<code>#RRGGBB</code>) are also accepted.</p>"],
+
+    ["r-codes", "Error and warning codes", "Every diagnostic, by phase",
+      "<p>Each diagnostic shows its code, the phase that found it, the line and column, and a suggested fix. Click a diagnostic in the visualiser to jump to that spot in the source.</p>" +
+      codeTable("Lexical errors (L)", "L") + codeTable("Syntax errors (P)", "P") + codeTable("Semantic errors (S)", "S") + codeTable("Warnings (W)", "W")],
+
+    ["r-ir", "Intermediate code", "The structured IR produced by phase 4",
+      '<div class="scroll-x"><table><thead><tr><th>Instruction</th><th>Operand</th><th>Meaning</th></tr></thead><tbody>' +
+      [["SET_PEN", "color", "set the pen color"], ["MOVE", "distance", "move forward"], ["TURN", "angle", "turn clockwise"], ["PEN_UP", "", "lift the pen"],
+       ["PEN_DOWN", "", "lower the pen"], ["CLEAR", "", "erase the drawing"], ["LOOP_BEGIN", "count, loop label", "start of a repeated block"], ["LOOP_END", "loop label", "end of the block with the same label"]]
+        .map((r) => '<tr><td><span class="tt kw">' + r[0] + "</span></td><td>" + r[1] + "</td><td>" + r[2] + "</td></tr>").join("") + "</tbody></table></div>" +
+      '<pre class="block" style="margin-top:10px">#1  SET_PEN     BLUE            line 1\n#2  LOOP_BEGIN  4    [L2]       line 2\n#3    MOVE      100             line 3\n#4    TURN      90              line 4\n#5  LOOP_END         [L2]       line 5</pre>' +
+      "<p>Each instruction has an id, an operation, operands, and the source line it came from. Loops are kept as a BEGIN/END pair instead of being copied out, which keeps the code small and lets the optimizer reason about a loop as a unit.</p>"],
+
+    ["r-opt", "Optimization passes", "How phase 5 shrinks the code without changing the drawing",
+      '<div class="scroll-x"><table><thead><tr><th>Pass</th><th>Rule</th><th>Example</th><th>Why it is safe</th></tr></thead><tbody>' +
+      [["1 No-op elimination", "Remove MOVE 0 and TURN by 0 or a multiple of 360", "TURN 360 → removed", "Nothing about the turtle or the drawing changes."],
+       ["2 Redundant pen state", "Remove a PEN, PENUP or PENDOWN that sets what is already set", "PEN RED; PEN RED → PEN RED", "The pen state is tracked from the start (BLACK, down). Inside a loop it is unknown if the loop itself changes it."],
+       ["3 Turn combination", "Merge turns that are next to each other", "TURN 30; TURN 60 → TURN 90", "Turning a then b equals turning (a + b) mod 360. Never merged across a loop boundary."],
+       ["4 Move combination", "Merge moves that are next to each other", "MOVE 40; MOVE 60 → MOVE 100", "Same heading, same pen, so the line covers exactly the same points. Never merged across turns, pen changes, CLEAR or loop boundaries."],
+       ["5 Loop optimization", "Unwrap REPEAT 1, remove empty loops, flatten a loop that only holds another loop, collapse a loop of a single MOVE or TURN", "REPEAT 3 { REPEAT 4 { … } } → REPEAT 12 { … }", "Each rewrite executes the same commands in the same order. Loops are never unrolled in general."],
+       ["6 Dead instruction", "Remove a pen setting that is overwritten before any MOVE", "PENUP; PENDOWN → PENDOWN", "Only TURNs (or the other pen property) come between, so the first setting never affects a line."]]
+        .map((r) => "<tr><td>" + r[0] + "</td><td>" + esc(r[1]) + '</td><td class="mono">' + esc(r[2]) + "</td><td>" + esc(r[3]) + "</td></tr>").join("") + "</tbody></table></div>" +
+      "<h3>Running until stable</h3><p>The six passes run in order, then again, until a full round changes nothing (at most " + LIMITS.maxPasses + " rounds). One pass often creates work for another: removing <code>MOVE 0</code> can put two TURNs next to each other.</p>" +
+      "<h3>Proof by execution</h3><p>After optimizing, the original and optimized code are both executed and compared. They count as the same when the final turtle state is identical (position, heading, pen, color) and the visible lines are identical after joining straight lines that continue each other in the same color. The visualiser shows the result as a Verified badge on the Optimizer tab.</p>"],
+
+    ["r-target", "Target code and drawing", "What phase 6 produces",
+      '<div class="scroll-x"><table><thead><tr><th>Drawing instruction</th><th>From IR</th><th>Effect on the turtle</th></tr></thead><tbody>' +
+      [["SET_COLOR #hex", "SET_PEN", "color = hex"], ["FORWARD d", "MOVE", "move d units; add a line if the pen is down"], ["ROTATE_CW a", "TURN", "heading = (heading + a) mod 360"],
+       ["LIFT_PEN", "PEN_UP", "pen = up"], ["LOWER_PEN", "PEN_DOWN", "pen = down"], ["CLEAR_CANVAS", "CLEAR", "hide all lines drawn so far"]]
+        .map((r) => '<tr><td class="mono">' + r[0] + '</td><td><span class="tt kw">' + r[1] + "</span></td><td>" + r[2] + "</td></tr>").join("") + "</tbody></table></div>" +
+      "<p style=\"margin-top:10px\">This is the only place where loops are expanded into a flat list. The turtle executes the list and records, for every step, its position, heading, pen and color before and after. The sheet is drawn only from these recorded lines, and the player steps through the same list, so what you see is exactly what the compiler generated.</p>"]
+  ];
+  $("doc").innerHTML = sections.map((s) => '<section class="panel" id="' + s[0] + '"><div class="eyebrow">' + esc(s[2]) + "</div><h2>" + esc(s[1]) + "</h2>" + s[3] + "</section>").join("");
+  document.querySelectorAll(".toc a").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault();
+    document.getElementById(a.dataset.goto).scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
+  }));
+}
+
+/* ---------------- views ---------------- */
+function route() {
+  const v = location.hash === "#reference" ? "reference" : "visualiser";
+  $("view-visualiser").hidden = v !== "visualiser";
+  $("view-reference").hidden = v !== "reference";
+  $("nav-visualiser").setAttribute("aria-current", v === "visualiser" ? "page" : "false");
+  $("nav-reference").setAttribute("aria-current", v === "reference" ? "page" : "false");
+  if (v === "visualiser") requestAnimationFrame(() => { fitSheet(); });
+}
+window.addEventListener("hashchange", route);
+
+/* ---------------- boot ---------------- */
+buildReference();
+const savedSrc = store.get("tgl.src"), savedSample = store.get("tgl.sample");
+if (savedSrc && savedSrc.trim()) {
+  src.value = savedSrc;
+  sampleSel.value = Object.values(SAMPLES).indexOf(savedSrc) >= 0 ? Object.keys(SAMPLES).find((k) => SAMPLES[k] === savedSrc) : "__custom";
+} else {
+  const k = SAMPLES[savedSample] ? savedSample : DEFAULT_SAMPLE;
+  sampleSel.value = k; src.value = SAMPLES[k];
+}
+if (!TABS.some((t) => t.key === activeTab)) activeTab = "lex";
+route();
+runCompile();
+</script>
+
+</body></html>
