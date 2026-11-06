@@ -10,7 +10,7 @@ REPEAT 4 {
 }
 ```
 
-
+This program compiles to a blue square.
 
 ---
 
@@ -25,6 +25,7 @@ REPEAT 4 {
 | Karthik Reddy | 230035 |
 | Kanhaiya Kumar | 230062 |
 | Fathal Koul | 230043 |
+
 
 ---
 
@@ -66,8 +67,8 @@ REPEAT 4 {
 
 No installation is needed. The whole compiler runs in the browser.
 
-1. Download or clone this folder.
-2. Open `index.html` in Chrome, Edge or Firefox (double-click it).
+1. Download or clone this repository (**Code → Download ZIP**, or `git clone`).
+2. Open [`TGL Compiler Visualiser (2).html`](<TGL Compiler Visualiser (2).html>) in Chrome, Edge or Firefox (double-click the file).
 3. Choose a program from the **Sample** list, or type your own. The program recompiles as you type. You can also press **Compile**.
 4. Use the player under the drawing sheet to step through the drawing, and the tabs at the bottom to see what each phase produced.
 5. Open **Language reference** (top right) for the full language documentation.
@@ -79,15 +80,12 @@ An internet connection is only used to load fonts. Without one, the page works t
 ## Project structure
 
 ```
-TGL-Compiler/
-├── index.html                      The compiler and the visualiser (one self-contained file)
-├── README.md                       This file
-└── docs/
-    ├── screenshot-visualiser.png   Visualiser screenshot
-    └── screenshot-reference.png    Language reference screenshot
+.
+├── README.md                          This file
+└── TGL Compiler Visualiser (2).html     The compiler and the visualiser (one self-contained file)
 ```
 
-Inside `index.html`, the compiler core and the user interface are kept separate:
+The whole project is a single HTML file with no dependencies. Inside `TGL Compiler Visualiser (2).html`, the compiler core and the user interface are kept separate:
 
 | Part | Responsibility |
 | --- | --- |
@@ -522,7 +520,5 @@ The compiler core was tested separately from the user interface.
 | `CIRCLE r` and `GOTO x, y` | semantic rules, new IR operations, new drawing instructions |
 | Error recovery | parser skips to the next `;` or `}` to report several syntax errors at once |
 | New output targets | only phase 6 changes, for example SVG export or G-code for a pen plotter |
-
----
 
 
