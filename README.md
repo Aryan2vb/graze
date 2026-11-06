@@ -10,9 +10,7 @@ REPEAT 4 {
 }
 ```
 
-This program compiles to a blue square.
 
-![TGL Compiler Visualiser](docs/screenshot-visualiser.png)
 
 ---
 
@@ -527,8 +525,4 @@ The compiler core was tested separately from the user interface.
 
 ---
 
-## Further reading
 
-- **Language reference** tab inside the visualiser: the complete language documentation.
-
-![Language reference](docs/screenshot-reference.png)
