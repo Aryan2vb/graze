@@ -1,5 +1,7 @@
 # TGL Compiler: A Six-Phase Compiler for Turtle Graphics
 
+**Live Demo:** [https://karthikreddy0165.github.io/graze/](https://karthikreddy0165.github.io/graze/)
+
 A complete mini compiler for **TGL (Turtle Graphics Language)**, a small language for drawing shapes and patterns with a turtle. Every program passes through all six classical compiler phases: lexical analysis, syntax analysis, semantic analysis, intermediate code generation, code optimization and target code generation. The output of each phase can be inspected, and the final drawing is animated step by step.
 
 ```
