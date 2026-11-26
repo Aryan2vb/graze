@@ -5,7 +5,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-
+/* Layout: a drafting-table workbench. Source and diagnostics on the left, the drawing sheet on the right,
+   and a phase-by-phase inspector underneath. The drawing sheet stays paper-white in both themes,
+   because pen colors (including BLACK) are defined against white paper. */
 :root {
   --bg: #eef2f0;
   --panel: #ffffff;
@@ -196,14 +198,34 @@ tr:last-child td { border-bottom: 0; }
 .rule-st { font-family: var(--font-mono); font-size: 11px; font-weight: 600; }
 .rule-st.pass { color: var(--ok); } .rule-st.fail { color: var(--err); } .rule-st.na { color: var(--skip); }
 
-/* AST tree */
-.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
-.tree ul { padding-left: 22px; border-left: 1px dashed var(--line); margin-left: 9px; }
-.tree li { padding: 3px 0; }
-.node { display: inline-flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
-.node .kind { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); padding: 1px 7px; border-radius: 5px; }
-.node .det { font-family: var(--font-mono); font-size: 12.5px; }
-.node .pos { font-size: 11.5px; color: var(--muted); }
+/* AST: top-down SVG tree */
+.ast-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 10px; }
+.ast-tools .hint { font-size: 12px; color: var(--muted); margin-left: auto; }
+.ast-scroll { overflow: auto; max-height: 640px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--sunk); }
+.ast-svg { display: block; margin: 0 auto; }
+.ast-svg .edge { fill: none; stroke: var(--muted); stroke-opacity: .55; stroke-width: 1.4; }
+.ast-svg .elab { font: 600 10px var(--font-mono); fill: var(--muted); text-anchor: middle; paint-order: stroke; stroke: var(--sunk); stroke-width: 4px; stroke-linejoin: round; }
+.an { cursor: pointer; }
+.an:focus { outline: none; }
+.an rect.box { fill: var(--panel); stroke: var(--accent); stroke-width: 1.6; transition: fill .15s; }
+.an:hover rect.box, .an:focus-visible rect.box { fill: var(--accent-soft); }
+.an:focus-visible rect.box { stroke-width: 2.6; }
+.an .t-type { font: 500 9.5px var(--font-mono); fill: var(--muted); text-anchor: middle; }
+.an .t-main { font: 600 13.5px var(--font-mono); fill: var(--fg); text-anchor: middle; }
+.an .t-sub { font: 10px var(--font-body); fill: var(--muted); text-anchor: middle; }
+.an.root rect.box { stroke: var(--fg); stroke-width: 2; }
+.an.loop rect.box, .an.block rect.box { stroke: var(--warn); }
+.an.block rect.box { stroke-dasharray: 5 3; }
+.an.num rect.box { stroke: var(--syn-num); }
+.an.color rect.box { stroke: var(--syn-col); }
+.an.folded rect.box { stroke-dasharray: 3 3; }
+.an-toggle { cursor: pointer; }
+.an-toggle circle { fill: var(--panel); stroke: var(--muted); stroke-width: 1.2; }
+.an-toggle:hover circle { stroke: var(--accent); }
+.an-toggle text { font: 700 11px var(--font-mono); fill: var(--fg); text-anchor: middle; pointer-events: none; }
+.an-hidden { font: 600 10.5px var(--font-mono); fill: var(--muted); }
+.ast-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); margin-top: 10px; }
+.ast-legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; border: 2px solid; margin-right: 6px; vertical-align: -1px; }
 
 /* IR listing */
 .ir { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.7; margin: 0; }
@@ -1397,29 +1419,141 @@ function viewTokens(tokens) {
     "</tbody></table></div>";
 }
 
-function astNode(n) {
-  let kind = n.kind, det = "", kids = [];
+/* ---------------- AST view ----------------
+   Drawn as a top-down tree in SVG. Every subtree gets a column as wide as itself,
+   each parent is centred over its children, and every edge is labelled with the
+   role the child plays (count, body, distance, ...). REPEAT bodies are grouped
+   under a Block node, as in a conventional AST. Node ids are tree paths ("0.2.1"),
+   so folded subtrees stay folded when the tab re-renders. */
+const astFolded = new Set();
+const AST_H = 50, AST_LEVEL = 100, AST_GAP = 18, AST_PAD = 18;
+
+function astInfo(n) {
+  const plural = (k, w) => k + " " + w + (k === 1 ? "" : "s");
+  const ARG_ROLE = { SETX: "x", SETY: "y", CIRCLE: "radius", WAIT: "ms" };
   switch (n.kind) {
-    case "Program": kind = "ProgramNode"; det = n.body.length + " statement" + (n.body.length === 1 ? "" : "s"); kids = n.body; break;
-    case "Pen": kind = "PenCommandNode"; kids = [n.color]; break;
-    case "Color": kind = "ColorNode"; det = n.name + (n.isHex ? " (hex)" : ""); break;
-    case "Move": kind = "MoveCommandNode"; kids = [n.arg]; break;
-    case "Turn": kind = "TurnCommandNode"; kids = [n.arg]; break;
-    case "Number": kind = "NumberNode"; det = n.lexeme + (n.isInteger ? " (integer)" : " (decimal)"); break;
-    case "Repeat": kind = "RepeatNode"; det = "count + " + n.body.length + " statement" + (n.body.length === 1 ? "" : "s"); kids = [n.count].concat(n.body); break;
-    case "PenUp": kind = "PenUpNode"; break;
-    case "PenDown": kind = "PenDownNode"; break;
-    case "Clear": kind = "ClearNode"; break;
-    case "Extension": kind = n.command + " (extension)"; kids = n.args; break;
+    case "Program": return { type: "Program", text: "PROGRAM", sub: plural(n.body.length, "statement"), cls: "root", kids: n.body.map((k) => ["", k]) };
+    case "Block": return { type: "Block", text: "{ … }", sub: plural(n.body.length, "statement"), cls: "block", kids: n.body.map((k, i) => ["[" + i + "]", k]) };
+    case "Repeat": return { type: "RepeatStmt", text: "REPEAT", sub: n.endLine && n.endLine !== n.line ? "lines " + n.line + "–" + n.endLine : "", cls: "loop",
+      kids: [["count", n.count], ["body", { kind: "Block", body: n.body, line: n.line, col: n.col }]] };
+    case "Pen": return { type: "PenStmt", text: "PEN", cls: "stmt", kids: [["color", n.color]] };
+    case "Move": return { type: "MoveStmt", text: "MOVE", cls: "stmt", kids: [["distance", n.arg]] };
+    case "Turn": return { type: "TurnStmt", text: "TURN", cls: "stmt", kids: [["angle", n.arg]] };
+    case "PenUp": return { type: "PenUpStmt", text: "PENUP", cls: "stmt", kids: [] };
+    case "PenDown": return { type: "PenDownStmt", text: "PENDOWN", cls: "stmt", kids: [] };
+    case "Clear": return { type: "ClearStmt", text: "CLEAR", cls: "stmt", kids: [] };
+    case "Extension": return { type: "ExtensionStmt", text: n.command, cls: "stmt",
+      kids: n.command === "GOTO" ? [["x", n.args[0]], ["y", n.args[1]]] : n.args.map((a) => [ARG_ROLE[n.command] || "value", a]) };
+    case "Number": return { type: n.isInteger ? "IntLiteral" : "FloatLiteral", text: n.lexeme, cls: "num", kids: [], literal: true };
+    case "Color": return { type: n.isHex ? "HexColor" : "ColorLiteral", text: n.name, cls: "color", kids: [], literal: true,
+      swatch: n.isHex ? n.name : colorHex(n.name) };
+    default: return { type: n.kind, text: String(n.kind).toUpperCase(), cls: "stmt", kids: [] };
   }
-  const swatch = n.kind === "Color" && (n.isHex ? n.name : colorHex(n.name)) ? '<i class="swatch" style="background:' + esc(n.isHex ? n.name : colorHex(n.name)) + '"></i>' : "";
-  return '<li><span class="node"><span class="kind">' + esc(kind) + '</span><span class="det">' + swatch + esc(det) + '</span><span class="pos">line ' + n.line + ", col " + n.col + "</span></span>" +
-    (kids.length ? "<ul>" + kids.map(astNode).join("") + "</ul>" : "") + "</li>";
 }
+
+function astLayout(root) {
+  let maxDepth = 0;
+  const boxW = (I) => Math.max(76, I.text.length * 8.4 + (I.swatch ? 22 : 0) + 26, (I.sub || "").length * 5.8 + 20, I.type.length * 6.2 + 20);
+  const count = (n) => astInfo(n).kids.reduce((s, [, k]) => s + 1 + count(k), 0);
+  function measure(n, id, depth) {
+    const info = astInfo(n);
+    const folded = astFolded.has(id) && info.kids.length > 0;
+    const kids = folded ? [] : info.kids.map(([role, k], i) => ({ role, m: measure(k, id + "." + i, depth + 1) }));
+    const bw = boxW(info);
+    const kidsW = kids.reduce((s, k) => s + k.m.w, 0);
+    if (depth > maxDepth) maxDepth = depth;
+    return { n, id, depth, info, bw, kids, folded, hidden: folded ? count(n) : 0, w: Math.max(bw + AST_GAP, kidsW), kidsW };
+  }
+  function place(m, left) {
+    m.x = left + m.w / 2;
+    m.y = AST_PAD + m.depth * AST_LEVEL;
+    let x = left + (m.w - m.kidsW) / 2;
+    for (const k of m.kids) { place(k.m, x); x += k.m.w; }
+  }
+  const tree = measure(root, "0", 0);
+  place(tree, AST_PAD);
+  return { tree, width: Math.ceil(tree.w + AST_PAD * 2 + 30), height: Math.ceil(AST_PAD * 2 + maxDepth * AST_LEVEL + AST_H + 14) };
+}
+
+function astSvg(ast) {
+  const { tree, width, height } = astLayout(ast);
+  let edges = "", labels = "", nodes = "";
+  (function draw(m) {
+    const I = m.info, H = AST_H, half = m.bw / 2;
+    for (const k of m.kids) {
+      const c = k.m, y1 = m.y + H + 17, y2 = c.y, my = (y1 + y2) / 2;
+      edges += '<path class="edge" d="M' + m.x + "," + y1 + " C" + m.x + "," + my + " " + c.x + "," + my + " " + c.x + "," + y2 + '"/>';
+      if (k.role) labels += '<text class="elab" x="' + ((m.x + c.x) / 2) + '" y="' + (my + 3) + '">' + esc(k.role) + "</text>";
+      draw(c);
+    }
+    const rx = I.literal ? H / 2 : 9;
+    const mainY = I.sub ? 31 : 36;
+    const sw = I.swatch ? '<rect x="' + (half - (I.text.length * 8.4) / 2 - 18) + '" y="' + (mainY - 10) + '" width="12" height="12" rx="3" fill="' + esc(I.swatch) + '" stroke="var(--line)"/>' : "";
+    const mainX = I.swatch ? half + 9 : half;
+    const label = I.type + (I.text ? " " + I.text : "") + ", line " + m.n.line + " column " + m.n.col;
+    nodes += '<g class="an ' + I.cls + (m.folded ? " folded" : "") + '" data-id="' + m.id + '" data-line="' + m.n.line + '" data-col="' + m.n.col + '" transform="translate(' + (m.x - half) + "," + m.y + ')" tabindex="0" role="button" aria-label="' + esc(label) + '">' +
+      "<title>" + esc(I.type + " · line " + m.n.line + ", col " + m.n.col + " · click to show in source") + "</title>" +
+      '<rect class="box" width="' + m.bw + '" height="' + H + '" rx="' + rx + '"/>' +
+      '<text class="t-type" x="' + half + '" y="14">' + esc(I.type) + "</text>" + sw +
+      '<text class="t-main" x="' + mainX + '" y="' + mainY + '">' + esc(I.text) + "</text>" +
+      (I.sub ? '<text class="t-sub" x="' + half + '" y="44">' + esc(I.sub) + "</text>" : "") + "</g>";
+    if (I.kids.length) {
+      nodes += '<g class="an-toggle" data-fold="' + m.id + '" transform="translate(' + m.x + "," + (m.y + H + 8) + ')" role="button" aria-label="' + (m.folded ? "Expand" : "Collapse") + ' subtree"><title>' + (m.folded ? "Expand" : "Collapse") + ' subtree</title><circle r="8"/><text y="4">' + (m.folded ? "+" : "−") + "</text></g>";
+      if (m.folded) nodes += '<text class="an-hidden" x="' + (m.x + half + 6) + '" y="' + (m.y + H / 2 + 4) + '">+' + m.hidden + " hidden</text>";
+    }
+  })(tree);
+  return '<svg class="ast-svg" width="' + width + '" height="' + height + '" viewBox="0 0 ' + width + " " + height + '" role="group" aria-label="Abstract syntax tree">' + edges + labels + nodes + "</svg>";
+}
+
+function astFoldAll(ast, fold) {
+  astFolded.clear();
+  if (!fold) return;
+  (function walk(n, id) {           // fold every REPEAT body so the program's outline stays visible
+    astInfo(n).kids.forEach(([role, k], i) => { if (role === "body") astFolded.add(id + "." + i); walk(k, id + "." + i); });
+  })(ast, "0");
+}
+
 function viewAst(ast) {
-  return '<p class="intro">The recursive descent parser checks the token order against the grammar and builds this Abstract Syntax Tree. REPEAT nodes hold their body as children.</p>' +
-    '<div class="scroll-x scroll-y"><ul class="tree">' + astNode(ast) + "</ul></div>";
+  viewAst.last = ast;
+  return '<p class="intro">The recursive descent parser checks the token order against the grammar and builds this Abstract Syntax Tree. Each command becomes a statement node whose operands are child nodes, and each REPEAT owns a count and a Block holding its body.</p>' +
+    '<div class="ast-tools"><button type="button" class="btn" data-ast="expand">Expand all</button><button type="button" class="btn" data-ast="fold">Collapse loop bodies</button>' +
+    '<span class="hint">Click a node to show it in the source · use − / + to fold a subtree</span></div>' +
+    '<div class="ast-scroll">' + astSvg(ast) + "</div>" +
+    '<div class="ast-legend"><span><i style="border-color:var(--fg)"></i>Program</span><span><i style="border-color:var(--accent)"></i>Statement</span>' +
+    '<span><i style="border-color:var(--warn)"></i>Loop / block</span><span><i style="border-color:var(--syn-num);border-radius:6px"></i>Number literal</span>' +
+    '<span><i style="border-color:var(--syn-col);border-radius:6px"></i>Color literal</span></div>';
 }
+
+/* AST interactions (delegated, so they survive every re-render of the tab panel) */
+function astRerender() {
+  const sc = document.querySelector("#tabpanel .ast-scroll");
+  const pos = sc ? [sc.scrollLeft, sc.scrollTop] : null;
+  renderTabs();
+  const sc2 = document.querySelector("#tabpanel .ast-scroll");
+  if (pos && sc2) { sc2.scrollLeft = pos[0]; sc2.scrollTop = pos[1]; }
+}
+document.addEventListener("click", (e) => {
+  if (!e.target.closest || !e.target.closest("#tabpanel")) return;
+  const act = e.target.closest("[data-ast]");
+  if (act) { astFoldAll(viewAst.last, act.dataset.ast === "fold"); astRerender(); return; }
+  const fold = e.target.closest("[data-fold]");
+  if (fold) { const id = fold.dataset.fold; astFolded.has(id) ? astFolded.delete(id) : astFolded.add(id); astRerender(); return; }
+  const node = e.target.closest(".an");
+  if (node) goToLine(+node.dataset.line, +node.dataset.col);
+});
+document.addEventListener("keydown", (e) => {
+  const node = e.target.closest && e.target.closest("#tabpanel .an");
+  if (!node) return;
+  if (e.key === "Enter") { e.preventDefault(); goToLine(+node.dataset.line, +node.dataset.col); }
+  else if (e.key === " " && document.querySelector('#tabpanel [data-fold="' + node.dataset.id + '"]')) {
+    e.preventDefault();
+    const id = node.dataset.id;
+    astFolded.has(id) ? astFolded.delete(id) : astFolded.add(id);
+    astRerender();
+    const again = document.querySelector('#tabpanel .an[data-id="' + id + '"]');
+    if (again) again.focus();
+  }
+});
 
 function viewSemantic(sem) {
   const m = sem.metrics;
